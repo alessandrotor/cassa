@@ -1,0 +1,469 @@
+/* ---- Palette ---------------------------------------------------------- */
+:root {
+  --sfondo: #f1f5f9;
+  --superficie: #ffffff;
+  --superficie-alt: #e8eef4;
+  --bordo: #cbd5e1;
+  --testo: #0f172a;
+  --testo-fioco: #64748b;
+  --accento: #0f766e;
+  --accento-chiaro: #ccfbf1;
+  --ok: #15803d;
+  --ok-chiaro: #dcfce7;
+  --errore: #b91c1c;
+  --errore-chiaro: #fee2e2;
+  --avviso: #b45309;
+  --avviso-chiaro: #fef3c7;
+  --ombra: 0 1px 2px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --sfondo: #0b1220;
+    --superficie: #162032;
+    --superficie-alt: #1e2c44;
+    --bordo: #334155;
+    --testo: #e2e8f0;
+    --testo-fioco: #94a3b8;
+    --accento: #2dd4bf;
+    --accento-chiaro: #134e4a;
+    --ok: #4ade80;
+    --ok-chiaro: #14532d;
+    --errore: #f87171;
+    --errore-chiaro: #7f1d1d;
+    --avviso: #fbbf24;
+    --avviso-chiaro: #78350f;
+    --ombra: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* ---- Base ------------------------------------------------------------- */
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--sfondo);
+  color: var(--testo);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+  /* Niente selezione accidentale mentre si tocca in fretta il cassetto. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+/* Gli importi non devono ballare mentre le cifre cambiano. */
+.cifra { font-variant-numeric: tabular-nums; }
+
+/* ---- Impalcatura ------------------------------------------------------ */
+.app {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  max-width: 560px;
+  margin: 0 auto;
+  background: var(--sfondo);
+}
+
+.scena {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.azioni {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 10px;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+  background: var(--superficie);
+  border-top: 1px solid var(--bordo);
+}
+
+.pulsante {
+  flex: 0 0 auto;
+  min-height: 52px;
+  border-radius: 12px;
+  font-size: 17px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--superficie-alt);
+  color: var(--testo);
+  transition: transform 0.06s ease;
+}
+.pulsante:active { transform: scale(0.97); }
+.pulsante--principale { background: var(--accento); color: #fff; }
+@media (prefers-color-scheme: dark) { .pulsante--principale { color: #06231f; } }
+.pulsante:disabled { opacity: 0.45; cursor: default; }
+.pulsante--fantasma { background: transparent; border: 1px solid var(--bordo); }
+/* Solo nella barra in fondo i pulsanti si spartiscono la larghezza. */
+.azioni .pulsante { flex: 1; }
+
+.scheda {
+  background: var(--superficie);
+  border-radius: 14px;
+  box-shadow: var(--ombra);
+  padding: 12px;
+}
+
+.titolo-sezione {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--testo-fioco);
+  margin: 0 0 8px;
+}
+
+/* ---- Barra di stato --------------------------------------------------- */
+.barra {
+  flex: 0 0 auto;
+  background: var(--superficie);
+  border-bottom: 1px solid var(--bordo);
+  padding: calc(8px + env(safe-area-inset-top)) 14px 8px;
+}
+
+.barra__righe {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.barra__voce { display: flex; flex-direction: column; line-height: 1.15; }
+.barra__etichetta { font-size: 11px; color: var(--testo-fioco); text-transform: uppercase; letter-spacing: 0.06em; }
+.barra__valore { font-size: 18px; font-weight: 700; }
+.barra__valore--serie { color: var(--accento); }
+
+.barra__uscita {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 10px;
+  font-size: 22px;
+  color: var(--testo-fioco);
+}
+
+.timer {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--superficie-alt);
+  overflow: hidden;
+  margin-top: 8px;
+}
+.timer__barra {
+  height: 100%;
+  width: 100%;
+  background: var(--accento);
+  animation-name: scadenza;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+@keyframes scadenza {
+  from { width: 100%; background: var(--accento); }
+  70% { background: var(--accento); }
+  to { width: 0%; background: var(--errore); }
+}
+
+/* ---- Scontrino -------------------------------------------------------- */
+.scontrino { text-align: center; }
+.scontrino__voce { font-size: 13px; color: var(--testo-fioco); }
+.scontrino__importo {
+  font-size: clamp(32px, 11vw, 42px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+.scontrino__riga {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 5px 0;
+}
+.scontrino__riga + .scontrino__riga { border-top: 1px dashed var(--bordo); }
+.scontrino__importo-riga { font-weight: 700; font-size: 19px; }
+
+/* ---- Tagli (banconote e monete) --------------------------------------- */
+.griglia-tagli {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.taglio {
+  position: relative;
+  min-height: 52px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  font-weight: 700;
+  font-size: 16px;
+  color: #14213d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.06s ease, opacity 0.12s ease;
+}
+.taglio:active { transform: scale(0.94); }
+.taglio:disabled { opacity: 0.3; }
+.taglio--moneta { border-radius: 50%; aspect-ratio: 1; min-height: 0; max-width: 66px; margin: 0 auto; }
+
+/* I colori delle banconote euro vere: riconoscerle a colpo d'occhio fa parte
+   del mestiere. Valgono sia per i tagli nel cassetto sia per i gettoni gia'
+   posati sul vassoio, che devono restare la stessa cosa a colpo d'occhio. */
+[data-valore="5000"] { background: linear-gradient(160deg, #f6c58a, #eda45c); }
+[data-valore="2000"] { background: linear-gradient(160deg, #a8cdf0, #6ea9de); }
+[data-valore="1000"] { background: linear-gradient(160deg, #f0a6a6, #dd8080); }
+[data-valore="500"]  { background: linear-gradient(160deg, #d6dce3, #b3bcc7); }
+[data-valore="200"], [data-valore="100"] { background: linear-gradient(160deg, #efe2b0, #cdb976); }
+[data-valore="50"], [data-valore="20"], [data-valore="10"] { background: linear-gradient(160deg, #f0d78d, #d9b95c); }
+[data-valore="5"], [data-valore="2"], [data-valore="1"] { background: linear-gradient(160deg, #e0a882, #c07f57); }
+
+.taglio__contatore {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 11px;
+  background: var(--accento);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.taglio__scorta {
+  position: absolute;
+  bottom: 3px;
+  right: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(20, 33, 61, 0.6);
+}
+.taglio--scarso { box-shadow: inset 0 0 0 2px var(--avviso); }
+
+/* ---- Vassoio ---------------------------------------------------------- */
+.vassoio {
+  min-height: 62px;
+  border: 2px dashed var(--bordo);
+  border-radius: 12px;
+  padding: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+.vassoio__vuoto { color: var(--testo-fioco); font-size: 14px; }
+.vassoio__totale {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 8px;
+  font-size: 15px;
+}
+.vassoio__totale strong { font-size: 22px; }
+
+.gettone {
+  min-height: 40px;
+  min-width: 52px;
+  padding: 0 8px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #14213d;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+}
+.gettone--moneta { border-radius: 50%; width: 44px; min-width: 44px; height: 44px; padding: 0; font-size: 12px; }
+
+/* ---- Tastierino ------------------------------------------------------- */
+.display {
+  background: var(--superficie);
+  border-radius: 12px;
+  box-shadow: var(--ombra);
+  padding: 10px 14px;
+  text-align: right;
+  font-size: clamp(30px, 10vw, 38px);
+  font-weight: 800;
+  min-height: 58px;
+}
+.display--segnaposto { color: var(--testo-fioco); font-weight: 600; }
+
+.tastierino {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.tasto {
+  /* 52 px restano un bersaglio comodo per il pollice, ben sopra i 44 minimi. */
+  min-height: 52px;
+  border-radius: 12px;
+  background: var(--superficie);
+  box-shadow: var(--ombra);
+  font-size: 24px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.06s ease;
+}
+.tasto:active { transform: scale(0.95); background: var(--superficie-alt); }
+.tasto--utility { font-size: 18px; color: var(--testo-fioco); }
+
+/* ---- Feedback --------------------------------------------------------- */
+.feedback { border-radius: 14px; padding: 14px; }
+.feedback--ok { background: var(--ok-chiaro); border: 1px solid var(--ok); }
+.feedback--errore { background: var(--errore-chiaro); border: 1px solid var(--errore); }
+.feedback--avviso { background: var(--avviso-chiaro); border: 1px solid var(--avviso); }
+.feedback__titolo { font-size: 19px; font-weight: 800; margin: 0 0 6px; display: flex; align-items: center; gap: 8px; }
+.feedback--ok .feedback__titolo { color: var(--ok); }
+.feedback--errore .feedback__titolo { color: var(--errore); }
+.feedback--avviso .feedback__titolo { color: var(--avviso); }
+.feedback__testo { margin: 0 0 10px; font-size: 15px; }
+.feedback__punti { font-weight: 700; }
+
+.conteggio {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  font-size: 14px;
+  background: var(--superficie);
+  border-radius: 10px;
+  padding: 10px;
+}
+.conteggio__passo { display: flex; align-items: center; gap: 5px; }
+.conteggio__freccia { color: var(--testo-fioco); }
+.conteggio__cumulato { font-weight: 700; }
+.conteggio__aggiunta { font-size: 12px; color: var(--testo-fioco); }
+
+/* ---- Home ------------------------------------------------------------- */
+.home__intestazione { text-align: center; padding: 18px 0 6px; }
+.home__titolo { font-size: 30px; font-weight: 800; margin: 0; letter-spacing: -0.02em; }
+.home__sottotitolo { color: var(--testo-fioco); margin: 4px 0 0; font-size: 15px; }
+
+.modalita {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  width: 100%;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--superficie);
+  box-shadow: var(--ombra);
+  border: 2px solid transparent;
+}
+.modalita--attiva { border-color: var(--accento); background: var(--accento-chiaro); }
+.modalita__nome { font-size: 17px; font-weight: 700; }
+.modalita__desc { font-size: 14px; color: var(--testo-fioco); }
+
+.chip-riga { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  padding: 9px 13px;
+  min-height: 44px;
+  /* I numeri di livello sono etichette corte: senza min-width il bersaglio
+     scende sotto i 44 px e col pollice si sbaglia livello. */
+  min-width: 44px;
+  justify-content: center;
+  border-radius: 99px;
+  border: 1px solid var(--bordo);
+  background: var(--superficie);
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+}
+.chip--attivo { background: var(--accento); color: #fff; border-color: var(--accento); }
+@media (prefers-color-scheme: dark) { .chip--attivo { color: #06231f; } }
+
+/* ---- Riepilogo e statistiche ------------------------------------------ */
+.metriche { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.metrica {
+  background: var(--superficie);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: var(--ombra);
+}
+.metrica__valore { font-size: 26px; font-weight: 800; line-height: 1.1; }
+.metrica__etichetta { font-size: 12px; color: var(--testo-fioco); text-transform: uppercase; letter-spacing: 0.05em; }
+
+.riga-stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+}
+.riga-stat + .riga-stat { border-top: 1px solid var(--bordo); }
+.riga-stat__nome { font-weight: 600; font-size: 15px; }
+.riga-stat__dettaglio { font-size: 12px; color: var(--testo-fioco); }
+.riga-stat__numero { font-size: 18px; font-weight: 700; }
+
+.barra-precisione {
+  position: relative;
+  height: 6px;
+  border-radius: 99px;
+  background: var(--superficie-alt);
+  overflow: hidden;
+  margin-top: 4px;
+}
+.barra-precisione__pieno { height: 100%; background: var(--accento); }
+.barra-precisione__pieno--sotto { background: var(--avviso); }
+/* Il traguardo da superare: senza, una barra al 70% e una all'85% si somigliano. */
+.barra-precisione__soglia {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: var(--testo-fioco);
+}
+
+.avviso {
+  background: var(--avviso-chiaro);
+  border: 1px solid var(--avviso);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.nota { font-size: 13px; color: var(--testo-fioco); margin: 0; }
+
+/* Il cliente che parla: si legge come un fumetto, non come un'etichetta. */
+.battuta {
+  background: var(--superficie-alt);
+  border-radius: 14px;
+  border-bottom-left-radius: 4px;
+  padding: 10px 14px;
+  font-size: 15px;
+  font-style: italic;
+  align-self: flex-start;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+  /* La barra del tempo non e' un vezzo: dice quanto manca, e va lasciata correre. */
+  .timer__barra { animation-name: scadenza !important; }
+}
