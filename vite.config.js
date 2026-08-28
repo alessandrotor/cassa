@@ -5,7 +5,16 @@ import { readFileSync } from 'node:fs';
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url)));
 
+/*
+ * Su GitHub Pages il sito non sta alla radice del dominio ma sotto il nome del
+ * repository, quindi ogni percorso assoluto va prefissato. Sta in una variabile
+ * d'ambiente perche' cambia con l'hosting: alla radice (dominio proprio,
+ * Netlify, Cloudflare) basta BASE_PATH=/ e non si tocca altro.
+ */
+const base = process.env.BASE_PATH ?? '/cassa/';
+
 export default defineConfig({
+  base,
   plugins: [
     react(),
     VitePWA({
@@ -15,7 +24,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        navigateFallback: '/index.html',
+        navigateFallback: `${base}index.html`,
       },
       includeAssets: ['favicon.svg'],
       manifest: {
@@ -27,8 +36,8 @@ export default defineConfig({
         background_color: '#f8fafc',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/',
-        scope: '/',
+        start_url: base,
+        scope: base,
         icons: [
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
