@@ -3,6 +3,17 @@
 Gioco di allenamento per chi sta in cassa: prendere i soldi giusti e dare il resto
 giusto, in fretta. Web app installabile, pensata per essere usata dal telefono.
 
+**Si gioca qui: https://alessandrotor.github.io/cassa/**
+
+Dal telefono si può installare come app: nel menu del browser, «Aggiungi a
+schermata Home». Una volta installata funziona anche senza rete, e i progressi
+restano sul dispositivo — non c'è nessun server e nessun dato esce da lì.
+
+---
+
+© 2026. Tutti i diritti riservati: il codice è visibile ma non è rilasciato con
+una licenza open source, quindi non è consentito riusarlo o ridistribuirlo.
+
 ## Come si gioca
 
 Due modalità:
