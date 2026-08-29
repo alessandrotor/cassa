@@ -9,7 +9,8 @@ import { creaCassetto, registraTransazione, totaleCassetto, tagliEsauriti, chius
 import { etichettaTaglio } from '../data/valuta.js';
 
 import BarraStato, { StatoCassetto } from './BarraStato.jsx';
-import Esercizio, { rispostaIniziale, rispostaPronta } from './Esercizi.jsx';
+import Esercizio from './Esercizi.jsx';
+import { rispostaIniziale, rispostaPronta } from '../utils/risposta.js';
 import Feedback from './Feedback.jsx';
 
 /** Un turno di cassa dura quanto una coda vera, non quanto una partita infinita. */

@@ -8,7 +8,7 @@ import { valutaRichiesta } from './spiccioli.js';
  * da sola.
  *
  * @param {Object} transazione quella prodotta da generaTransazione
- * @param {Object} risposta { pezzi, nonBasta } oppure { chiesti } per gli spiccioli
+ * @param {Object} risposta { pezzi, dichiarazione } oppure { chiesti } per gli spiccioli
  * @param {Object|null} cassetto scorte disponibili; null = illimitato
  * @returns {{ corretta: boolean, errore: string|null, titolo: string,
  *             messaggio: string, mostraResto: boolean, minima: boolean,
@@ -28,15 +28,18 @@ export function valutaRisposta(transazione, risposta, cassetto = null) {
  */
 function valutaResto(transazione, risposta, cassetto) {
   const pezzi = risposta?.pezzi ?? {};
-  const haDettoNonBasta = Boolean(risposta?.nonBasta);
+  const dichiarazione = risposta?.dichiarazione ?? null;
 
-  if (haDettoNonBasta) {
+  if (dichiarazione === 'non-basta') {
     return transazione.bastano
       ? esito({
           corretta: false,
           errore: 'cifra-sbagliata',
           titolo: 'I soldi bastavano',
-          messaggio: `Ti ha dato ${formatEuro(transazione.ricevuto)} per un conto di ${formatEuro(transazione.conto)}: il resto era ${formatEuro(transazione.resto)}.`,
+          messaggio: transazione.resto === 0
+            ? `Ti ha dato ${formatEuro(transazione.ricevuto)}, esattamente il conto: bastavano.`
+            : `Ti ha dato ${formatEuro(transazione.ricevuto)} per un conto di ${formatEuro(transazione.conto)}: il resto era ${formatEuro(transazione.resto)}.`,
+          mostraResto: transazione.resto > 0,
         })
       : esito({
           corretta: true,
@@ -46,12 +49,50 @@ function valutaResto(transazione, risposta, cassetto) {
         });
   }
 
+  if (dichiarazione === 'senza-resto') {
+    if (!transazione.bastano) {
+      return esito({
+        corretta: false,
+        errore: 'pagamento-insufficiente',
+        titolo: 'Non ha pagato giusto',
+        messaggio: `Ti ha dato ${formatEuro(transazione.ricevuto)} per un conto di ${formatEuro(transazione.conto)}: mancano ${formatEuro(transazione.mancano)}.`,
+        mostraResto: false,
+      });
+    }
+    return transazione.resto === 0
+      ? esito({
+          corretta: true,
+          titolo: 'Pagamento esatto',
+          messaggio: `${formatEuro(transazione.ricevuto)} tondi: non c'è niente da rendere.`,
+          mostraResto: false,
+        })
+      : esito({
+          corretta: false,
+          errore: 'cifra-sbagliata',
+          titolo: "Un resto c'era",
+          messaggio: `Ti ha dato ${formatEuro(transazione.ricevuto)} per ${formatEuro(transazione.conto)}: dovevi rendere ${formatEuro(transazione.resto)}.`,
+        });
+  }
+
   if (!transazione.bastano) {
     return esito({
       corretta: false,
       errore: 'pagamento-insufficiente',
-      titolo: 'Non c era niente da rendere',
+      titolo: "Non c'era niente da rendere",
       messaggio: `Sul bancone c'erano solo ${formatEuro(transazione.ricevuto)} per un conto di ${formatEuro(transazione.conto)}: mancavano ${formatEuro(transazione.mancano)}.`,
+      mostraResto: false,
+      pezziResi: pezzi,
+    });
+  }
+
+  // Da qui in giù il cliente ha coperto il conto e il giocatore ha preso
+  // qualcosa dal cassetto (senza pezzi e senza dichiarazione non si conferma).
+  if (transazione.resto === 0) {
+    return esito({
+      corretta: false,
+      errore: 'cifra-sbagliata',
+      titolo: 'Il cliente aveva pagato giusto',
+      messaggio: `${formatEuro(transazione.ricevuto)} per un conto di ${formatEuro(transazione.conto)}: non c'era resto, e tu hai reso ${formatEuro(sommaPezzi(pezzi))}.`,
       mostraResto: false,
       pezziResi: pezzi,
     });

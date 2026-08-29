@@ -77,21 +77,59 @@ test('accorgersi che i soldi non bastano e una risposta giusta', () => {
     pezziPorti: { 500: 1, 200: 2, 100: 1 },
   });
 
-  const giusta = valutaRisposta(scarso, { pezzi: {}, nonBasta: true });
+  const giusta = valutaRisposta(scarso, { pezzi: {}, dichiarazione: 'non-basta' });
   assert.ok(giusta.corretta);
   assert.match(giusta.messaggio, /2,40 €/);
   assert.equal(giusta.mostraResto, false, 'non c e nessun resto da mostrare');
 
   // Rendere il resto quando il cliente non ha coperto il conto significa non
   // aver contato il mucchio: e' un errore suo, con un nome suo.
-  const distratto = valutaRisposta(scarso, { pezzi: { 100: 1 }, nonBasta: false });
+  const distratto = valutaRisposta(scarso, { pezzi: { 100: 1 }, dichiarazione: null });
   assert.equal(distratto.corretta, false);
   assert.equal(distratto.errore, 'pagamento-insufficiente');
   assert.match(distratto.messaggio, /mancavano/);
 });
 
+test('il pagamento esatto ha una risposta sua, e si puo sempre dare', () => {
+  // Il caso che mancava: con resto zero non c'era modo di confermare, e il
+  // giocatore restava fermo fino allo scadere del timer.
+  const esatto = transazione({ ricevuto: 1240, resto: 0, pezziPorti: { 1000: 1, 200: 1, 20: 2 } });
+
+  const giusta = valutaRisposta(esatto, { pezzi: {}, dichiarazione: 'senza-resto' });
+  assert.ok(giusta.corretta);
+  assert.equal(giusta.mostraResto, false, 'non c e nessun resto da mostrare');
+  assert.match(giusta.messaggio, /12,40 €/);
+
+  // Rendere qualcosa quando non c'era resto e' un errore, non una svista da ignorare.
+  const haReso = valutaRisposta(esatto, { pezzi: { 100: 1 }, dichiarazione: null });
+  assert.equal(haReso.corretta, false);
+  assert.match(haReso.titolo, /pagato giusto/i);
+
+  // E dichiarare il pagamento esatto quando un resto c'era resta sbagliato.
+  const restoVero = valutaRisposta(transazione(), { pezzi: {}, dichiarazione: 'senza-resto' });
+  assert.equal(restoVero.corretta, false);
+  assert.match(restoVero.messaggio, /7,60 €/);
+});
+
+test('con pagamento esatto le altre due risposte restano sbagliate', () => {
+  const esatto = transazione({ ricevuto: 1240, resto: 0, pezziPorti: { 1000: 1, 200: 1, 20: 2 } });
+  const nonBasta = valutaRisposta(esatto, { pezzi: {}, dichiarazione: 'non-basta' });
+  assert.equal(nonBasta.corretta, false);
+  assert.match(nonBasta.messaggio, /bastavano/);
+});
+
+test('dichiarare il pagamento esatto quando invece mancano soldi e un errore', () => {
+  const scarso = transazione({
+    ricevuto: 1000, resto: 0, bastano: false, mancano: 240, pezziPorti: { 500: 1, 200: 2, 100: 1 },
+  });
+  const esito = valutaRisposta(scarso, { pezzi: {}, dichiarazione: 'senza-resto' });
+  assert.equal(esito.corretta, false);
+  assert.equal(esito.errore, 'pagamento-insufficiente');
+  assert.match(esito.messaggio, /2,40 €/);
+});
+
 test('gridare al pagamento insufficiente quando i soldi bastavano e un errore', () => {
-  const esito = valutaRisposta(transazione(), { pezzi: {}, nonBasta: true });
+  const esito = valutaRisposta(transazione(), { pezzi: {}, dichiarazione: 'non-basta' });
   assert.equal(esito.corretta, false);
   assert.match(esito.messaggio, /7,60 €/, 'deve comunque dire quale era il resto');
 });
@@ -123,7 +161,7 @@ test('ogni esito ha un titolo e un messaggio leggibili, mai NaN o undefined', ()
   const casi = [
     [transazione(), { pezzi: { 500: 1, 200: 1, 50: 1, 10: 1 } }],
     [transazione(), { pezzi: { 500: 1 } }],
-    [transazione(), { pezzi: {}, nonBasta: true }],
+    [transazione(), { pezzi: {}, dichiarazione: 'non-basta' }],
     [transazione({ tipoEsercizio: 'conta', pezziPorti: { 2000: 1, 100: 1 }, ricevuto: 2100, resto: 860 }), { pezzi: { 500: 1 } }],
     [transazione({ tipoEsercizio: 'ricevi-spiccioli', spiccioliAggiunti: { 10: 1 } }), { pezzi: { 500: 1, 200: 1, 50: 1, 10: 1 } }],
     [transazione({ tipoEsercizio: 'chiedi-spiccioli' }), { chiesti: { 20: 1 } }],

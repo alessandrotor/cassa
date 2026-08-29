@@ -5,18 +5,6 @@ import { frasePerChiedere } from '../utils/spiccioli.js';
 import Scontrino from './Scontrino.jsx';
 import CassettoTagli, { Vassoio, PezziMostrati } from './Tagli.jsx';
 
-/** La risposta vuota per ciascun esercizio: serve al reset a ogni nuovo cliente. */
-export function rispostaIniziale(tipoEsercizio) {
-  if (tipoEsercizio === 'chiedi-spiccioli') return { chiesti: {} };
-  return { pezzi: {}, nonBasta: false };
-}
-
-/** Si può confermare solo quando c'è davvero qualcosa da confermare. */
-export function rispostaPronta(tipoEsercizio, risposta) {
-  if (tipoEsercizio === 'chiedi-spiccioli') return true; // "non chiedo niente" è una risposta
-  return contaPezzi(risposta?.pezzi) > 0 || Boolean(risposta?.nonBasta);
-}
-
 export default function Esercizio({ transazione, risposta, onRisposta, cassetto }) {
   const comuni = { transazione, risposta, onRisposta, cassetto };
   if (transazione.tipoEsercizio === 'chiedi-spiccioli') return <ChiediSpiccioli {...comuni} />;
@@ -35,17 +23,22 @@ function DaiIlResto({ transazione, risposta, onRisposta, cassetto }) {
   const scarsi = cassetto ? tagliInEsaurimento(cassetto) : [];
   const spiccioli = transazione.tipoEsercizio === 'ricevi-spiccioli';
 
+  // Prendere un taglio annulla la dichiarazione: sono risposte alternative.
   const prendi = valore => onRisposta({
     pezzi: { ...presi, [valore]: (presi[valore] ?? 0) + 1 },
-    nonBasta: false,
+    dichiarazione: null,
   });
   const rimetti = valore => {
     const quante = (presi[valore] ?? 0) - 1;
     const nuovi = { ...presi };
     if (quante > 0) nuovi[valore] = quante;
     else delete nuovi[valore];
-    onRisposta({ pezzi: nuovi, nonBasta: false });
+    onRisposta({ pezzi: nuovi, dichiarazione: null });
   };
+  const dichiara = quale => onRisposta({
+    pezzi: {},
+    dichiarazione: risposta.dichiarazione === quale ? null : quale,
+  });
 
   return (
     <>
@@ -70,14 +63,24 @@ function DaiIlResto({ transazione, risposta, onRisposta, cassetto }) {
         </div>
       </div>
 
-      <button
-        type="button"
-        className={`chip ${risposta.nonBasta ? 'chip--attivo' : ''}`}
-        style={{ alignSelf: 'center' }}
-        onClick={() => onRisposta({ pezzi: {}, nonBasta: !risposta.nonBasta })}
-      >
-        Non basta a coprire il conto
-      </button>
+      {/* Le due volte in cui non si rende niente. Il pagamento esatto capita
+          spesso, e senza un pulsante suo non ci sarebbe modo di rispondere. */}
+      <div className="chip-riga" style={{ justifyContent: 'center' }}>
+        <button
+          type="button"
+          className={`chip ${risposta.dichiarazione === 'senza-resto' ? 'chip--attivo' : ''}`}
+          onClick={() => dichiara('senza-resto')}
+        >
+          Ha pagato giusto
+        </button>
+        <button
+          type="button"
+          className={`chip ${risposta.dichiarazione === 'non-basta' ? 'chip--attivo' : ''}`}
+          onClick={() => dichiara('non-basta')}
+        >
+          Non basta
+        </button>
+      </div>
 
       <p className="titolo-sezione">Cassetto</p>
       <CassettoTagli presi={presi} cassetto={cassetto} scarsi={scarsi} onTocca={prendi} />
