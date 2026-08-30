@@ -1,6 +1,7 @@
-import { formatEuro, descriviPezzi, sommaPezzi, contaPezzi } from './soldi.js';
+import { formatEuro, descriviPezzi, sommaPezzi, contaPezzi, contaMonete } from './soldi.js';
 import { verificaComposizione, restoOttimale } from './resto.js';
 import { valutaRichiesta } from './spiccioli.js';
+import { obiettivo as obiettivoDi } from '../data/obiettivi.js';
 
 /**
  * Giudica la risposta del giocatore. Funzione pura e senza React: è qui che
@@ -10,14 +11,15 @@ import { valutaRichiesta } from './spiccioli.js';
  * @param {Object} transazione quella prodotta da generaTransazione
  * @param {Object} risposta { pezzi, dichiarazione } oppure { chiesti } per gli spiccioli
  * @param {Object|null} cassetto scorte disponibili; null = illimitato
+ * @param {{ obiettivo?: string }} opzioni quale idea di "resto ben reso" applicare
  * @returns {{ corretta: boolean, errore: string|null, titolo: string,
  *             messaggio: string, mostraResto: boolean, minima: boolean,
  *             composizioneDaMostrare: Object|null, pezziResi: Object|null }}
  */
-export function valutaRisposta(transazione, risposta, cassetto = null) {
+export function valutaRisposta(transazione, risposta, cassetto = null, opzioni = {}) {
   return transazione.tipoEsercizio === 'chiedi-spiccioli'
-    ? valutaSpiccioli(transazione, risposta, cassetto)
-    : valutaResto(transazione, risposta, cassetto);
+    ? valutaSpiccioli(transazione, risposta, cassetto, opzioni)
+    : valutaResto(transazione, risposta, cassetto, opzioni);
 }
 
 /**
@@ -26,7 +28,8 @@ export function valutaRisposta(transazione, risposta, cassetto = null) {
  * accorge solo chi ha contato davvero il mucchio, quindi e' parte dello stesso
  * giudizio e non di un esercizio a parte.
  */
-function valutaResto(transazione, risposta, cassetto) {
+function valutaResto(transazione, risposta, cassetto, opzioni = {}) {
+  const regola = obiettivoDi(opzioni.obiettivo);
   const pezzi = risposta?.pezzi ?? {};
   const dichiarazione = risposta?.dichiarazione ?? null;
 
@@ -132,30 +135,45 @@ function valutaResto(transazione, risposta, cassetto) {
   }
 
   if (!verifica.minima) {
+    // Comporre col minimo dei pezzi cede anche il minimo delle monete, quindi
+    // il verdetto è lo stesso per i due obiettivi: cambia solo di cosa parla,
+    // perché a chi sta salvando le monete «tre pezzi in più» non dice niente.
+    const monetePerse = contaMonete(pezzi) - contaMonete(verifica.pezziOttimali);
+    const perMonete = regola.misura === 'monete' && monetePerse > 0;
     return esito({
       corretta: true,
       parziale: true,
-      errore: 'composizione-non-minima',
+      errore: perMonete ? 'monete-sprecate' : 'composizione-non-minima',
       minima: false,
-      titolo: 'Cifra giusta, troppi pezzi',
-      messaggio: `Hai usato ${verifica.pezziUsati} pezzi: bastavano ${verifica.totalePezziOttimali} (${descriviPezzi(verifica.pezziOttimali)}).`,
+      etichettaBonus: regola.bonus,
+      titolo: perMonete ? 'Cifra giusta, troppe monete' : 'Cifra giusta, troppi pezzi',
+      messaggio: perMonete
+        ? `Hai ceduto ${contaMonete(pezzi)} monete invece di ${contaMonete(verifica.pezziOttimali)}: bastava ${descriviPezzi(verifica.pezziOttimali)}.`
+        : `Hai usato ${verifica.pezziUsati} pezzi: bastavano ${verifica.totalePezziOttimali} (${descriviPezzi(verifica.pezziOttimali)}).`,
       composizioneDaMostrare: verifica.pezziOttimali,
       pezziResi: pezzi,
     });
   }
 
+  const monete = contaMonete(pezzi);
   return esito({
     corretta: true,
     minima: true,
+    etichettaBonus: regola.bonus,
     titolo: 'Perfetto',
-    messaggio: `${formatEuro(transazione.resto)} con il minimo dei pezzi.`,
+    messaggio: regola.misura === 'monete'
+      ? (monete === 0
+          ? `${formatEuro(transazione.resto)} tutto in banconote: in cassa non è uscita una moneta.`
+          : `${formatEuro(transazione.resto)} cedendo solo ${monete === 1 ? 'una moneta' : `${monete} monete`}, il minimo possibile.`)
+      : `${formatEuro(transazione.resto)} con il minimo dei pezzi.`,
     composizioneDaMostrare: pezzi,
     pezziResi: pezzi,
   });
 }
 
 /** 'chiedi-spiccioli': conviene chiedere una moneta, e quale? */
-function valutaSpiccioli(transazione, risposta, cassetto) {
+function valutaSpiccioli(transazione, risposta, cassetto, opzioni = {}) {
+  const regola = obiettivoDi(opzioni.obiettivo);
   const chiesti = risposta?.chiesti ?? {};
   const giudizio = valutaRichiesta(
     chiesti,
@@ -163,6 +181,7 @@ function valutaSpiccioli(transazione, risposta, cassetto) {
     transazione.ricevuto,
     transazione.portafoglioCliente,
     cassetto,
+    opzioni,
   );
 
   const corretta = giudizio.verdetto === 'ottima' || giudizio.verdetto === 'giusto-non-chiedere';
@@ -184,7 +203,7 @@ function valutaSpiccioli(transazione, risposta, cassetto) {
     corretta,
     parziale,
     minima: giudizio.verdetto === 'ottima',
-    etichettaBonus: 'Richiesta azzeccata',
+    etichettaBonus: regola.misura === 'monete' ? 'Monete salvate' : 'Richiesta azzeccata',
     errore: corretta ? null : 'spicciolo-sbagliato',
     titolo: titoli[giudizio.verdetto] ?? 'Vediamo',
     messaggio: giudizio.messaggio,

@@ -1,4 +1,4 @@
-import { VALORI, VALORI_RESTO, etichettaTaglio } from '../data/valuta.js';
+import { VALORI, VALORI_RESTO, VALORI_MONETE, etichettaTaglio } from '../data/valuta.js';
 import { sommaPezzi, normalizzaPezzi } from './soldi.js';
 
 /** Sotto questa quantita' un taglio e' "agli sgoccioli": va risparmiato. */
@@ -57,6 +57,33 @@ export function eScarso(cassetto, valore, soglia = SOGLIA_SCARSITA) {
 }
 
 /**
+ * Il conto delle monete all'apertura e alla chiusura, taglio per taglio.
+ *
+ * E' il lascito vero del turno: le banconote rientrano dai clienti tutto il
+ * giorno, le monete no. Chi trova il cassetto senza monete da 10 non puo' dare
+ * il resto, e non e' un problema suo.
+ */
+export function bilancioMonete(iniziale, finale) {
+  const perTaglio = VALORI_MONETE.map(valore => ({
+    valore,
+    etichetta: etichettaTaglio(valore),
+    prima: iniziale?.[valore] ?? 0,
+    dopo: finale?.[valore] ?? 0,
+    differenza: (finale?.[valore] ?? 0) - (iniziale?.[valore] ?? 0),
+  }));
+  const prima = perTaglio.reduce((somma, t) => somma + t.prima, 0);
+  const dopo = perTaglio.reduce((somma, t) => somma + t.dopo, 0);
+  return {
+    prima,
+    dopo,
+    differenza: dopo - prima,
+    perTaglio,
+    // I tagli che c'erano e non ci sono più: sono quelli che bloccano il collega.
+    prosciugati: perTaglio.filter(t => t.prima > 0 && t.dopo === 0),
+  };
+}
+
+/**
  * Chiusura di cassa a fine turno: quanto e' entrato, se i conti tornano e
  * quali tagli sono finiti. La differenza e' l'errore accumulato dal giocatore.
  */
@@ -71,6 +98,7 @@ export function chiusuraCassa(iniziale, finale, incassoAtteso) {
     incassoEffettivo,
     differenza: incassoEffettivo - incassoAtteso,
     quadra: incassoEffettivo === incassoAtteso,
+    monete: bilancioMonete(iniziale, finale),
     // Solo i tagli che c'erano all'apertura e sono finiti durante il turno:
     // quelli mai avuti in cassa non sono un fatto della giornata.
     esauriti: tagliEsauriti(finale)

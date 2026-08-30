@@ -50,6 +50,39 @@ Quando sbagli il gioco non dice solo «no»: mostra il resto giusto, con quali p
 darlo, e come contarlo al cliente col conteggio progressivo — quello che si insegna
 davvero dietro il banco: `12,40 € → 12,50 → 13,00 → 15,00 → 20,00`.
 
+## Cosa vuol dire rendere bene
+
+Dentro il turno si scegle **cosa conta** come resto ben reso. Non è una terza
+modalità: è il criterio con cui il gioco giudica, e cambia la mossa giusta.
+
+| | Obiettivo | Cosa cambia |
+|---|---|---|
+| **Meno pezzi** | Il minor numero di banconote e monete | Più veloce da contare, meno errori |
+| **Salva le monete** | Cedere meno monete possibile | Chi prende il turno dopo deve avere di che dare il resto |
+
+Il secondo nasce da un fatto della cassa vera: le banconote rientrano dai clienti
+tutto il giorno, le monete no. Lasciare il cassetto senza monete da 10 non è un
+problema tuo, è un problema del collega che arriva.
+
+C'è un dettaglio che vale la pena conoscere prima di metterci mano: **comporre il
+resto col minimo dei pezzi cede già il minimo delle monete**, e non per caso —
+la moneta più grande (2 €) vale meno della banconota più piccola (5 €), quindi il
+greedy usa le banconote finché può. I due obiettivi non possono quindi divergere
+su *come* si compone un dato resto. È verificato su ogni importo in
+`test/obiettivi.test.js`.
+
+Divergono su *quale* resto ti trovi a dare, cioè sulla decisione di chiedere
+spiccioli. Su un resto di **14,55 €**: chiedere 50 centesimi porta a 15,05 € e
+riduce i pezzi; chiederne **45** porta a **15,00 €**, che si paga con due
+banconote e **zero monete**. Su un resto di 3,00 € (2 € + 1 €) l'obiettivo dei
+pezzi non disturba il cliente, quello delle monete chiede il 2 € e rende 5,00 €
+con una banconota sola.
+
+Simulando 300 turni da 15 clienti, la differenza si vede: a fine turno il
+cassetto ha perso **6 monete invece di 11**. Le monete incassate chiedendo non
+contano come guadagno anche se in cassa entrano davvero — se contassero, la mossa
+migliore diventerebbe «chiedi sempre il massimo», che non è una decisione.
+
 ## Come si sale di livello
 
 Il **punteggio non c'entra**: serve solo a misurarsi con sé stessi. Per il livello

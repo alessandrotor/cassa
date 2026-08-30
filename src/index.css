@@ -450,6 +450,8 @@ button {
 }
 
 .nota { font-size: 13px; color: var(--testo-fioco); margin: 0; }
+.monete-giu { color: var(--errore); font-weight: 700; }
+.monete-su { color: var(--ok); font-weight: 700; }
 
 /* Il cliente che parla: si legge come un fumetto, non come un'etichetta. */
 .battuta {

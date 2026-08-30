@@ -1,4 +1,4 @@
-import { VALORI, etichettaTaglio } from '../data/valuta.js';
+import { VALORI, etichettaTaglio, eMoneta } from '../data/valuta.js';
 
 /** 760 -> "7,60 €" */
 export function formatEuro(cent, { simbolo = true } = {}) {
@@ -33,6 +33,15 @@ export function sommaPezzi(pezzi) {
 export function contaPezzi(pezzi) {
   let totale = 0;
   for (const quantita of Object.values(pezzi ?? {})) totale += quantita;
+  return totale;
+}
+
+/** Quante di quelle sono monete: e' la misura che conta per chi prende il turno dopo. */
+export function contaMonete(pezzi) {
+  let totale = 0;
+  for (const [valore, quantita] of Object.entries(pezzi ?? {})) {
+    if (eMoneta(Number(valore))) totale += quantita;
+  }
   return totale;
 }
 

@@ -1,16 +1,13 @@
 import { VALORI_SPICCIOLI } from '../data/valuta.js';
-import { sommaPezzi, contaPezzi, descriviPezzi, importoParlato } from './soldi.js';
+import { sommaPezzi, contaPezzi, contaMonete, descriviPezzi, importoParlato } from './soldi.js';
 import { restoOttimale, creaCalcolatoreResto } from './resto.js';
 import { eScarso } from './cassetto.js';
+import { obiettivo as obiettivoDi } from '../data/obiettivi.js';
 
 /** Un cliente non tira fuori una manciata di monete: al massimo due o tre pezzi. */
 const MAX_PEZZI_RICHIESTI = 3;
 /** Chiedere più di 2 € di spiccioli non è una richiesta, è un secondo pagamento. */
 const MAX_IMPORTO_RICHIESTO = 200;
-/** Quanto "costa" al cassiere chiedere un pezzo, misurato in pezzi resi risparmiati. */
-const COSTO_PEZZO_CHIESTO = 0.5;
-/** Migliorare di meno di questo non vale la frase in più detta al cliente. */
-const GUADAGNO_MINIMO = 1;
 
 /**
  * Tutte le manciate di spiccioli che il cliente potrebbe davvero tirare fuori,
@@ -53,12 +50,20 @@ export function combinazioniSpiccioli(portafoglio, {
  * diventa 8,00 € = 3 pezzi (5 + 2 + 1). Meno pezzi da contare, meno errori,
  * e le monetine restano in cassa per chi viene dopo.
  *
+ * Con l'obiettivo 'salva-monete' cambia la misura: non si contano i pezzi resi
+ * ma le monete cedute, e la mossa giusta diventa portare il resto a una cifra
+ * pagabile in banconote. Su resto 14,55 € si chiedono 45 centesimi, non 50: il
+ * resto diventa 15,00 € e non esce nemmeno una moneta.
+ *
  * @param {number} conto importo da pagare, in centesimi
  * @param {number} ricevuto contanti già porti dal cliente, in centesimi
  * @param {Object} portafoglio cosa ha in tasca il cliente, { valore: quantita }
  * @param {Object|null} cassetto scorte di cassa; null = illimitato
+ * @param {{ obiettivo?: string }} opzioni quale idea di "resto ben reso" applicare
  */
-export function suggerisciSpiccioli(conto, ricevuto, portafoglio, cassetto = null) {
+export function suggerisciSpiccioli(conto, ricevuto, portafoglio, cassetto = null, opzioni = {}) {
+  const regola = obiettivoDi(opzioni.obiettivo);
+  const misura = regola.misura === 'monete' ? contaMonete : contaPezzi;
   const restoBase = ricevuto - conto;
   // Un solo calcolatore serve il resto base e tutte le varianti con spiccioli,
   // riusando la stessa tabella nel caso in cui debba costruirla.
@@ -66,11 +71,14 @@ export function suggerisciSpiccioli(conto, ricevuto, portafoglio, cassetto = nul
   const base = calcolatore.valuta(restoBase);
 
   const esito = {
+    obiettivo: regola.chiave,
     conviene: false,
     daChiedere: null,
     importoChiesto: 0,
     pezziPrima: base.possibile ? base.totalePezzi : null,
     pezziDopo: base.possibile ? base.totalePezzi : null,
+    monetePrima: base.possibile ? contaMonete(base.pezzi) : null,
+    moneteDopo: base.possibile ? contaMonete(base.pezzi) : null,
     restoPrima: restoBase,
     restoDopo: restoBase,
     composizionePrima: base.pezzi,
@@ -81,33 +89,31 @@ export function suggerisciSpiccioli(conto, ricevuto, portafoglio, cassetto = nul
 
   if (restoBase < 0) return esito;
 
-  const punteggioBase = base.possibile ? base.totalePezzi : Number.POSITIVE_INFINITY;
+  const costoBase = base.possibile ? misura(base.pezzi) : Number.POSITIVE_INFINITY;
   let migliore = null;
 
   for (const { pezzi: aggiunta, importo, quanti: pezziChiesti } of combinazioniSpiccioli(portafoglio)) {
     if (pezziChiesti === 0) continue;
     const nuovoResto = restoBase + importo;
-    // Per scegliere basta il numero di pezzi: la composizione la ricaviamo solo
-    // dove serve davvero, cioe' quando c'e' un cassetto con tagli da risparmiare.
-    const pezziDopo = calcolatore.quantiPezzi(nuovoResto);
-    if (pezziDopo < 0) continue;
-    const composizione = cassetto ? calcolatore.valuta(nuovoResto).pezzi : null;
+    const dopo = calcolatore.valuta(nuovoResto);
+    if (!dopo.possibile) continue;
 
-    const punteggio = pezziDopo + COSTO_PEZZO_CHIESTO * pezziChiesti;
+    const costo = misura(dopo.pezzi) + regola.costoPezzoChiesto * pezziChiesti;
     const candidato = {
       pezzi: aggiunta,
       importo,
       pezziChiesti,
       restoDopo: nuovoResto,
-      pezziDopo,
-      composizione,
-      punteggio,
-      salvaScarsi: composizione ? contaTagliScarsiRisparmiati(base.pezzi, composizione, cassetto) : 0,
+      pezziDopo: dopo.totalePezzi,
+      moneteDopo: contaMonete(dopo.pezzi),
+      composizione: dopo.pezzi,
+      punteggio: costo,
+      salvaScarsi: contaTagliScarsiRisparmiati(base.pezzi, dopo.pezzi, cassetto),
     };
     esito.alternative.push(candidato);
 
-    if (!migliore || punteggio < migliore.punteggio ||
-        (punteggio === migliore.punteggio && pezziChiesti < migliore.pezziChiesti)) {
+    if (!migliore || costo < migliore.punteggio ||
+        (costo === migliore.punteggio && pezziChiesti < migliore.pezziChiesti)) {
       migliore = candidato;
     }
   }
@@ -116,20 +122,21 @@ export function suggerisciSpiccioli(conto, ricevuto, portafoglio, cassetto = nul
 
   if (!migliore) return esito;
 
-  const guadagno = punteggioBase - migliore.punteggio;
+  const guadagno = costoBase - migliore.punteggio;
   const salvaScarsi = migliore.salvaScarsi > 0;
-  // Vale la pena aprire bocca solo se si risparmiano pezzi veri, oppure se
+  // Vale la pena aprire bocca solo se si risparmia qualcosa di vero, oppure se
   // così si salva un taglio che in cassa sta finendo.
-  if (guadagno >= GUADAGNO_MINIMO || (salvaScarsi && guadagno > 0) || !base.possibile) {
+  if (guadagno >= regola.guadagnoMinimo || (salvaScarsi && guadagno > 0) || !base.possibile) {
     esito.conviene = true;
     esito.daChiedere = migliore.pezzi;
     esito.importoChiesto = migliore.importo;
     esito.pezziDopo = migliore.pezziDopo;
+    esito.moneteDopo = migliore.moneteDopo;
     esito.restoDopo = migliore.restoDopo;
-    esito.composizioneDopo = migliore.composizione ?? calcolatore.valuta(migliore.restoDopo).pezzi;
+    esito.composizioneDopo = migliore.composizione;
     esito.motivo = !base.possibile
       ? 'resto-impossibile'
-      : (salvaScarsi ? 'salva-taglio-scarso' : 'meno-pezzi');
+      : (salvaScarsi ? 'salva-taglio-scarso' : regola.chiave);
   }
 
   return esito;
@@ -151,17 +158,29 @@ function contaTagliScarsiRisparmiati(composizioneBase, composizioneAlternativa, 
  * Giudica la scelta del giocatore invece di bocciarla e basta: chiedere 60
  * centesimi invece di 10 può comunque migliorare le cose, e va detto.
  *
+ * I messaggi parlano nell'unità dell'obiettivo: pezzi resi o monete cedute.
+ * Dire «da 5 a 3 pezzi» a chi sta cercando di salvare le monete non spiega
+ * niente di quello che gli interessa.
+ *
  * @param {Object|null} scelta i pezzi che il giocatore ha chiesto; null/{} = "non chiedo niente"
  */
-export function valutaRichiesta(scelta, conto, ricevuto, portafoglio, cassetto = null) {
-  const ottimale = suggerisciSpiccioli(conto, ricevuto, portafoglio, cassetto);
+export function valutaRichiesta(scelta, conto, ricevuto, portafoglio, cassetto = null, opzioni = {}) {
+  const regola = obiettivoDi(opzioni.obiettivo);
+  const misura = regola.misura === 'monete' ? contaMonete : contaPezzi;
+  const unita = quanti => `${quanti} ${regola.misura === 'monete'
+    ? (quanti === 1 ? 'moneta' : 'monete')
+    : (quanti === 1 ? 'pezzo' : 'pezzi')}`;
+
+  const ottimale = suggerisciSpiccioli(conto, ricevuto, portafoglio, cassetto, opzioni);
   const pezziChiesti = contaPezzi(scelta);
+  const prima = misura(ottimale.composizionePrima);
+  const alMeglio = ottimale.conviene ? misura(ottimale.composizioneDopo) : prima;
 
   if (pezziChiesti === 0) {
     return ottimale.conviene
       ? {
           verdetto: 'occasione-persa',
-          messaggio: `Potevi chiedere ${descriviPezzi(ottimale.daChiedere)}: il resto sarebbe passato da ${ottimale.pezziPrima} a ${ottimale.pezziDopo} pezzi.`,
+          messaggio: `Potevi chiedere ${descriviPezzi(ottimale.daChiedere)}: il resto sarebbe passato da ${unita(prima)} a ${unita(alMeglio)}.`,
           ottimale,
         }
       : {
@@ -189,33 +208,32 @@ export function valutaRichiesta(scelta, conto, ricevuto, portafoglio, cassetto =
     };
   }
 
-  const pezziPrima = ottimale.pezziPrima;
-  const pezziDopo = composizione.totalePezzi;
+  const dopo = misura(composizione.pezzi);
 
-  if (ottimale.conviene && ottimale.importoChiesto === importo && pezziDopo === ottimale.pezziDopo) {
+  if (ottimale.conviene && ottimale.importoChiesto === importo && dopo === alMeglio) {
     return {
       verdetto: 'ottima',
-      messaggio: `Esatto: il resto passa da ${pezziPrima} a ${pezziDopo} pezzi.`,
+      messaggio: `Esatto: il resto passa da ${unita(prima)} a ${unita(dopo)}.`,
       ottimale,
     };
   }
-  if (pezziDopo < pezziPrima) {
+  if (dopo < prima) {
     return {
       verdetto: 'buona',
-      messaggio: `Va bene, migliora (da ${pezziPrima} a ${pezziDopo} pezzi). Il massimo era chiedere ${descriviPezzi(ottimale.daChiedere)}: ${ottimale.pezziDopo} pezzi.`,
+      messaggio: `Va bene, migliora (da ${unita(prima)} a ${unita(dopo)}). Il massimo era chiedere ${descriviPezzi(ottimale.daChiedere)}: ${unita(alMeglio)}.`,
       ottimale,
     };
   }
-  if (pezziDopo === pezziPrima) {
+  if (dopo === prima) {
     return {
       verdetto: 'inutile',
-      messaggio: `Il resto resta di ${pezziDopo} pezzi: hai disturbato il cliente per niente.`,
+      messaggio: `Il resto resta di ${unita(dopo)}: hai disturbato il cliente per niente.`,
       ottimale,
     };
   }
   return {
     verdetto: 'peggiore',
-    messaggio: `Così peggiori: il resto passa da ${pezziPrima} a ${pezziDopo} pezzi.`,
+    messaggio: `Così peggiori: il resto passa da ${unita(prima)} a ${unita(dopo)}.`,
     ottimale,
   };
 }

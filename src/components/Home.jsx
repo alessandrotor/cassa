@@ -1,12 +1,14 @@
 import { useState } from 'react';
 
 import { LIVELLI, LIVELLO_MASSIMO, ESERCIZI, DIFFICOLTA } from '../data/livelli.js';
+import { OBIETTIVI, OBIETTIVO_PREDEFINITO } from '../data/obiettivi.js';
 import { progressoLivello, regolaAvanzamento } from '../utils/statistiche.js';
 import { CLIENTI_PER_TURNO } from './Partita.jsx';
 
 export default function Home({ statistiche, onAvvia, onStatistiche, onDifficolta }) {
   const [modalita, setModalita] = useState('allenamento');
   const [eserciziScelti, setEserciziScelti] = useState([]);
+  const [obiettivoScelto, setObiettivoScelto] = useState(OBIETTIVO_PREDEFINITO);
 
   const livelloRaggiunto = statistiche?.livelloRaggiunto ?? 1;
   const [numeroLivello, setNumeroLivello] = useState(livelloRaggiunto);
@@ -56,6 +58,26 @@ export default function Home({ statistiche, onAvvia, onStatistiche, onDifficolta
             finiscono, e alla fine la cassa deve quadrare.
           </span>
         </button>
+
+        {/* Non è una terza modalità: è come si giudica il resto, dentro il turno. */}
+        <div className="scheda">
+          <p className="titolo-sezione">Cosa vuol dire rendere bene</p>
+          <div className="chip-riga">
+            {Object.values(OBIETTIVI).map(voce => (
+              <button
+                key={voce.chiave}
+                type="button"
+                className={`chip ${voce.chiave === obiettivoScelto ? 'chip--attivo' : ''}`}
+                onClick={() => setObiettivoScelto(voce.chiave)}
+              >
+                {voce.nome}
+              </button>
+            ))}
+          </div>
+          <p className="nota" style={{ marginTop: 8 }}>
+            {OBIETTIVI[obiettivoScelto].descrizione}
+          </p>
+        </div>
 
         {modalita === 'allenamento' && (
           <div className="scheda">
@@ -138,6 +160,7 @@ export default function Home({ statistiche, onAvvia, onStatistiche, onDifficolta
           onClick={() => onAvvia({
             modalita,
             numeroLivello,
+            obiettivo: obiettivoScelto,
             eserciziScelti: filtroValido.length > 0 ? filtroValido : null,
           })}
         >

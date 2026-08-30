@@ -12,6 +12,7 @@ export const ERRORI = {
   'cifra-sbagliata': 'Resto sbagliato',
   'pagamento-insufficiente': 'Non hai visto che mancavano soldi',
   'composizione-non-minima': 'Troppi pezzi',
+  'monete-sprecate': 'Monete cedute inutilmente',
   'spicciolo-sbagliato': 'Spiccioli chiesti male',
   'scorte-insufficienti': 'Tagli non disponibili',
   'tempo-scaduto': 'Tempo scaduto',

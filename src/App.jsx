@@ -69,6 +69,7 @@ export default function App() {
         modalita={impostazioni.modalita}
         numeroLivello={impostazioni.numeroLivello}
         eserciziScelti={impostazioni.eserciziScelti}
+        obiettivo={impostazioni.obiettivo}
         onEsito={registra}
         onFine={concludiPartita}
         onEsci={() => setSchermata('home')}

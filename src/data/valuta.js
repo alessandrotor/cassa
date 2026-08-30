@@ -26,6 +26,15 @@ export const VALORI_RESTO = VALORI.filter(v => v <= 5000);
 /** Tagli che un cliente puo' avere in tasca per arrotondare il pagamento. */
 export const VALORI_SPICCIOLI = [200, 100, 50, 20, 10, 5, 2, 1];
 
+/**
+ * Le monete. Sono la risorsa scarsa della cassa: le banconote arrivano dai
+ * clienti tutto il giorno, le monete no, e senza monete non si da' il resto.
+ */
+export const VALORI_MONETE = [200, 100, 50, 20, 10, 5, 2, 1];
+
+/** La moneta piu' grande (2 €) vale meno della banconota piu' piccola (5 €). */
+export const MONETA_MASSIMA = 200;
+
 const perValore = new Map(TAGLI.map(t => [t.valore, t]));
 
 export function taglio(valore) {
@@ -38,6 +47,10 @@ export function etichettaTaglio(valore) {
 
 export function eBanconota(valore) {
   return perValore.get(valore)?.tipo === 'banconota';
+}
+
+export function eMoneta(valore) {
+  return perValore.get(valore)?.tipo === 'moneta';
 }
 
 /**

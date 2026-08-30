@@ -6,6 +6,8 @@ import { creaRng, generaTransazione } from '../utils/generatore.js';
 import { valutaRisposta } from '../utils/valutazione.js';
 import { calcolaPunti } from '../utils/punteggio.js';
 import { creaCassetto, registraTransazione, totaleCassetto, tagliEsauriti, chiusuraCassa } from '../utils/cassetto.js';
+import { contaMonete } from '../utils/soldi.js';
+import { obiettivo as obiettivoDi } from '../data/obiettivi.js';
 import { etichettaTaglio } from '../data/valuta.js';
 
 import BarraStato, { StatoCassetto } from './BarraStato.jsx';
@@ -16,7 +18,7 @@ import Feedback from './Feedback.jsx';
 /** Un turno di cassa dura quanto una coda vera, non quanto una partita infinita. */
 export const CLIENTI_PER_TURNO = 15;
 
-export default function Partita({ modalita, numeroLivello, eserciziScelti, onEsito, onFine, onEsci }) {
+export default function Partita({ modalita, numeroLivello, eserciziScelti, obiettivo, onEsito, onFine, onEsci }) {
   const turno = modalita === 'turno';
 
   const livello = useMemo(() => {
@@ -33,7 +35,7 @@ export default function Partita({ modalita, numeroLivello, eserciziScelti, onEsi
 
   const [cassetto, setCassetto] = useState(cassettoIniziale.current);
   const [transazione, setTransazione] = useState(() =>
-    generaTransazione(livello, { cassetto: cassettoIniziale.current, rng: rng.current }));
+    generaTransazione(livello, { cassetto: cassettoIniziale.current, rng: rng.current, obiettivo }));
   const [risposta, setRisposta] = useState(() => rispostaIniziale(transazione.tipoEsercizio));
   const [esito, setEsito] = useState(null);
   const [premio, setPremio] = useState({ punti: 0, dettaglio: [] });
@@ -54,6 +56,7 @@ export default function Partita({ modalita, numeroLivello, eserciziScelti, onEsi
 
   const inFeedback = esito !== null;
   const secondiTimer = livello.secondiTimer;
+  const salvaMonete = turno && obiettivoDi(obiettivo).misura === 'monete';
 
   /* ---- Il round si chiude qui: è l'unico punto che assegna punti e statistiche. */
   const concludi = useCallback((rispostaFinale, tempoScaduto = false) => {
@@ -67,7 +70,7 @@ export default function Partita({ modalita, numeroLivello, eserciziScelti, onEsi
           mostraResto: transazione.bastano, minima: false, etichettaBonus: null,
           composizioneDaMostrare: null, pezziResi: null, ricevutoEffettivo: null,
         }
-      : valutaRisposta(transazione, rispostaFinale, cassetto);
+      : valutaRisposta(transazione, rispostaFinale, cassetto, { obiettivo });
 
     const nuovaStreak = valutato.corretta ? streak + 1 : 0;
     const guadagno = calcolaPunti({
@@ -106,7 +109,7 @@ export default function Partita({ modalita, numeroLivello, eserciziScelti, onEsi
     }
 
     vibra(valutato.corretta);
-  }, [inFeedback, transazione, cassetto, streak, secondiTimer, turno, onEsito]);
+  }, [inFeedback, transazione, cassetto, streak, secondiTimer, turno, obiettivo, onEsito]);
 
   /*
    * Il conto alla rovescia e' un solo setTimeout, non un intervallo a 10 Hz:
@@ -133,11 +136,12 @@ export default function Partita({ modalita, numeroLivello, eserciziScelti, onEsi
         corrette,
         tempi,
         chiusura: chiusuraCassa(cassettoIniziale.current, cassetto, incassoAtteso),
+        salvaMonete,
       });
       return;
     }
 
-    const nuova = generaTransazione(livello, { cassetto, rng: rng.current });
+    const nuova = generaTransazione(livello, { cassetto, rng: rng.current, obiettivo });
     setTransazione(nuova);
     setRisposta(rispostaIniziale(nuova.tipoEsercizio));
     setEsito(null);
@@ -166,7 +170,14 @@ export default function Partita({ modalita, numeroLivello, eserciziScelti, onEsi
       />
 
       <main className="scena">
-        {turno && <StatoCassetto totale={totaleCassetto(cassetto)} esauriti={esauriti} />}
+        {turno && (
+          <StatoCassetto
+            totale={totaleCassetto(cassetto)}
+            esauriti={esauriti}
+            monete={salvaMonete ? contaMonete(cassetto) : null}
+            moneteIniziali={salvaMonete ? contaMonete(cassettoIniziale.current) : null}
+          />
+        )}
 
         {inFeedback ? (
           <Feedback

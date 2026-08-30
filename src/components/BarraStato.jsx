@@ -62,11 +62,29 @@ export default function BarraStato({
   );
 }
 
-/** Riga discreta col totale in cassa: serve solo nel Turno. */
-export function StatoCassetto({ totale, esauriti = [] }) {
+/**
+ * Riga discreta col totale in cassa: serve solo nel Turno.
+ *
+ * Col conteggio delle monete quando l'obiettivo e' salvarle: senza vederle
+ * scendere in tempo reale, «lascia monete al collega» resta un buon proposito
+ * che si scopre solo alla chiusura, quando non si puo' piu' rimediare.
+ */
+export function StatoCassetto({ totale, esauriti = [], monete = null, moneteIniziali = null }) {
+  const differenza = monete !== null && moneteIniziali !== null ? monete - moneteIniziali : null;
   return (
     <p className="nota">
       In cassa <strong className="cifra">{formatEuro(totale)}</strong>
+      {monete !== null && (
+        <>
+          {' · '}
+          <strong className="cifra">{monete}</strong> monete
+          {differenza !== null && differenza !== 0 && (
+            <span className={differenza < 0 ? 'monete-giu' : 'monete-su'}>
+              {' '}({differenza > 0 ? '+' : ''}{differenza})
+            </span>
+          )}
+        </>
+      )}
       {esauriti.length > 0 && <> · finiti: {esauriti.map(t => t.etichetta ?? t).join(', ')}</>}
     </p>
   );

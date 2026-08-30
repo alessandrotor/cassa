@@ -140,15 +140,15 @@ const SERVE_SUGGERIMENTO = new Set(['chiedi-spiccioli', 'ricevi-spiccioli']);
  * @param {Object} livello voce di LIVELLI (o livelloLibero())
  * @param {{ cassetto?: Object|null, rng?: Function, tipoForzato?: string|null }} opzioni
  */
-export function generaTransazione(livello, { cassetto = null, rng = Math.random, tipoForzato = null } = {}) {
+export function generaTransazione(livello, { cassetto = null, rng = Math.random, tipoForzato = null, obiettivo = null } = {}) {
   const tipo = tipoForzato ?? scegli(rng, livello.esercizi);
 
   for (let tentativo = 0; tentativo < MAX_TENTATIVI; tentativo++) {
-    const candidata = provaTransazione(tipo, livello, cassetto, rng);
+    const candidata = provaTransazione(tipo, livello, cassetto, rng, obiettivo);
     if (candidata) return { ...candidata, meta: { livello: livello.numero, tentativi: tentativo + 1 } };
   }
 
-  return transazioneDiRipiego(tipo, livello, cassetto, rng);
+  return transazioneDiRipiego(tipo, livello, cassetto, rng, obiettivo);
 }
 
 /**
@@ -157,7 +157,7 @@ export function generaTransazione(livello, { cassetto = null, rng = Math.random,
  * ricaviamo il conto all'indietro. Il caso peggiore e' il pagamento esatto,
  * che e' sempre valido.
  */
-function transazioneDiRipiego(tipo, livello, cassetto, rng) {
+function transazioneDiRipiego(tipo, livello, cassetto, rng, obiettivo) {
   const contoDesiderato = generaConto(livello, rng);
   const portafoglio = generaPortafoglio(contoDesiderato, rng);
   const pezziPorti = banconotaPerPagare(contoDesiderato, portafoglio, rng)
@@ -177,6 +177,7 @@ function transazioneDiRipiego(tipo, livello, cassetto, rng) {
       pezziPorti,
       ricevuto,
       cassetto,
+      obiettivo,
       ripiego: true,
     }),
     meta: { livello: livello.numero, tentativi: MAX_TENTATIVI, ripiego: true },
@@ -185,30 +186,30 @@ function transazioneDiRipiego(tipo, livello, cassetto, rng) {
 
 /** Il resto componibile piu' vicino a quello desiderato; lo zero c'e' sempre. */
 function restoComponibilePiuVicino(calcolatore, desiderato) {
-  const obiettivo = Math.max(0, Math.min(desiderato, calcolatore.centMax));
+  const bersaglio = Math.max(0, Math.min(desiderato, calcolatore.centMax));
   for (let scarto = 0; scarto <= calcolatore.centMax; scarto++) {
-    const giu = obiettivo - scarto;
+    const giu = bersaglio - scarto;
     if (giu >= 0 && calcolatore.quantiPezzi(giu) >= 0) return giu;
-    const su = obiettivo + scarto;
+    const su = bersaglio + scarto;
     if (su <= calcolatore.centMax && calcolatore.quantiPezzi(su) >= 0) return su;
   }
   return 0;
 }
 
-function provaTransazione(tipo, livello, cassetto, rng) {
+function provaTransazione(tipo, livello, cassetto, rng, obiettivo) {
   const conto = generaConto(livello, rng);
   const portafoglio = generaPortafoglio(conto, rng);
 
-  if (tipo === 'conta') return provaConta(conto, portafoglio, cassetto, rng);
+  if (tipo === 'conta') return provaConta(conto, portafoglio, cassetto, rng, obiettivo);
 
   const banconota = banconotaPerPagare(conto, portafoglio, rng);
   if (!banconota) return null;
 
   if (tipo === 'ricevi-spiccioli') {
-    return provaRiceviSpiccioli(conto, portafoglio, banconota, cassetto, rng);
+    return provaRiceviSpiccioli(conto, portafoglio, banconota, cassetto, rng, obiettivo);
   }
   if (tipo === 'chiedi-spiccioli') {
-    return provaChiediSpiccioli(conto, portafoglio, banconota, cassetto, rng);
+    return provaChiediSpiccioli(conto, portafoglio, banconota, cassetto, rng, obiettivo);
   }
 
   // 'componi' e 'chiedi-spiccioli': banconota secca. Il mucchio da contare
@@ -218,14 +219,14 @@ function provaTransazione(tipo, livello, cassetto, rng) {
   if (ricevuto < conto) return null;
   if (!restoOttimale(ricevuto - conto, cassetto).possibile) return null;
 
-  return componiTransazione({ tipo, conto, portafoglio, pezziPorti: banconota, ricevuto, cassetto });
+  return componiTransazione({ tipo, conto, portafoglio, pezziPorti: banconota, ricevuto, cassetto, obiettivo });
 }
 
 /** Il cliente aggiunge di sua iniziativa le monete che rendono il resto piu' pulito. */
-function provaRiceviSpiccioli(conto, portafoglio, banconota, cassetto, rng) {
+function provaRiceviSpiccioli(conto, portafoglio, banconota, cassetto, rng, obiettivo) {
   const base = sommaPezzi(banconota);
   if (base < conto) return null;
-  const suggerimento = suggerisciSpiccioli(conto, base, portafoglio, cassetto);
+  const suggerimento = suggerisciSpiccioli(conto, base, portafoglio, cassetto, { obiettivo });
   if (!suggerimento.conviene) return null;
 
   // Ogni tanto il cliente sbaglia mira e aggiunge monete che non semplificano
@@ -247,6 +248,7 @@ function provaRiceviSpiccioli(conto, portafoglio, banconota, cassetto, rng) {
     pezziPorti,
     ricevuto,
     cassetto,
+    obiettivo,
     spiccioliAggiunti: aggiunta,
   });
 }
@@ -256,12 +258,12 @@ function provaRiceviSpiccioli(conto, portafoglio, banconota, cassetto, rng) {
  * conviene e quello in cui e' meglio stare zitti. Senza i secondi si impara
  * solo a chiedere sempre.
  */
-function provaChiediSpiccioli(conto, portafoglio, banconota, cassetto, rng) {
+function provaChiediSpiccioli(conto, portafoglio, banconota, cassetto, rng, obiettivo) {
   const ricevuto = sommaPezzi(banconota);
   if (ricevuto < conto) return null;
   if (!restoOttimale(ricevuto - conto, cassetto).possibile) return null;
 
-  const suggerimento = suggerisciSpiccioli(conto, ricevuto, portafoglio, cassetto);
+  const suggerimento = suggerisciSpiccioli(conto, ricevuto, portafoglio, cassetto, { obiettivo });
   const vogliamoCheConvenga = rng() < 0.7;
   if (suggerimento.conviene !== vogliamoCheConvenga) return null;
 
@@ -272,11 +274,12 @@ function provaChiediSpiccioli(conto, portafoglio, banconota, cassetto, rng) {
     pezziPorti: banconota,
     ricevuto,
     cassetto,
+    obiettivo,
   });
 }
 
 /** Il mucchio di contanti posato sul bancone: a volte non copre nemmeno il conto. */
-function provaConta(conto, portafoglio, cassetto, rng) {
+function provaConta(conto, portafoglio, cassetto, rng, obiettivo) {
   const insufficiente = rng() < 0.2;
   let pezziPorti;
 
@@ -300,10 +303,11 @@ function provaConta(conto, portafoglio, cassetto, rng) {
     pezziPorti,
     ricevuto: sommaPezzi(pezziPorti),
     cassetto,
+    obiettivo,
   });
 }
 
-function componiTransazione({ tipo, conto, portafoglio, pezziPorti, ricevuto, cassetto, spiccioliAggiunti = null, ripiego = false }) {
+function componiTransazione({ tipo, conto, portafoglio, pezziPorti, ricevuto, cassetto, obiettivo = null, spiccioliAggiunti = null, ripiego = false }) {
   const bastano = ricevuto >= conto;
   const resto = bastano ? ricevuto - conto : 0;
   return {
@@ -321,7 +325,7 @@ function componiTransazione({ tipo, conto, portafoglio, pezziPorti, ricevuto, ca
     // Il suggerimento costa una DP: lo calcoliamo solo dove il gioco lo usa.
     // Per il feedback degli altri esercizi si chiama suggerisciSpiccioli a mano.
     suggerimento: bastano && SERVE_SUGGERIMENTO.has(tipo)
-      ? suggerisciSpiccioli(conto, ricevuto, portafoglio, cassetto)
+      ? suggerisciSpiccioli(conto, ricevuto, portafoglio, cassetto, { obiettivo })
       : null,
     ripiego,
   };

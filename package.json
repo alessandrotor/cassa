@@ -1,7 +1,7 @@
 {
   "name": "cassa",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "Gioco di allenamento per la cassa: prendere i soldi giusti e dare il resto giusto, in fretta.",
   "scripts": {
