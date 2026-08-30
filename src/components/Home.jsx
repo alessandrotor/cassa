@@ -125,6 +125,10 @@ export default function Home({ statistiche, onAvvia, onStatistiche, onDifficolta
         <button type="button" className="pulsante pulsante--fantasma" onClick={onStatistiche}>
           Come sto andando
         </button>
+
+        {/* Serve a rispondere a "che versione sto usando": senza, capire se una
+            correzione e' arrivata sul telefono e' un indovinello. */}
+        <p className="nota" style={{ textAlign: 'center' }}>versione {__APP_VERSION__}</p>
       </main>
 
       <div className="azioni">
