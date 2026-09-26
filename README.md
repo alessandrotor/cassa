@@ -55,9 +55,11 @@ davvero dietro il banco: `12,40 € → 12,50 → 13,00 → 15,00 → 20,00`.
 
 ## Resto rapido
 
-È un esercizio di conto sotto pressione, non un esame del gesto: nessuno ferma
-il round per spiegare. Dopo ogni cliente compare per un attimo l'esito
-(«✓ Giusto» oppure «0,50 € in meno»), poi arriva subito il cliente dopo.
+È un esercizio di conto sotto pressione, non un esame del gesto. Consegnato un
+resto arriva subito il cliente dopo, e durante la sessione non trapela niente su
+com'è andata: nessun esito, nessun contatore di risposte giuste, nessuna
+vibrazione diversa per gli errori. Al banco nessuno ti dice che hai sbagliato il
+resto: lo scopri alla chiusura, quando la cassa non torna.
 
 Il tempo per cliente è un tempo fisso per il conto più un attimo per ogni pezzo
 da contare, perché un resto da 7,90 € (cinque pezzi) non può avere lo stesso

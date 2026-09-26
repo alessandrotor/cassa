@@ -8,9 +8,8 @@ import { formatEuro } from '../utils/soldi.js';
 export default function BarraStato({
   titolo,
   sottotitolo,
-  punteggio,
-  etichettaPunteggio = 'Punti',
-  streak,
+  punteggio = null,
+  streak = 0,
   progresso,
   secondiTimer = 0,
   chiaveRound,
@@ -35,10 +34,13 @@ export default function BarraStato({
           </div>
         )}
 
-        <div className="barra__voce" style={{ alignItems: 'flex-end' }}>
-          <span className="barra__etichetta">{etichettaPunteggio}</span>
-          <span className="barra__valore cifra">{punteggio}</span>
-        </div>
+        {/* Senza punteggio (Resto rapido) non si mostra niente che riveli l'esito. */}
+        {punteggio !== null && (
+          <div className="barra__voce" style={{ alignItems: 'flex-end' }}>
+            <span className="barra__etichetta">Punti</span>
+            <span className="barra__valore cifra">{punteggio}</span>
+          </div>
+        )}
 
         {streak > 1 && (
           <div className="barra__voce" style={{ alignItems: 'flex-end' }}>

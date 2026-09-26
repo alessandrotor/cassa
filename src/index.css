@@ -439,26 +439,6 @@ button {
 }
 
 /* ---- Resto rapido ----------------------------------------------------- */
-/* L'esito di un cliente: grande, leggibile in mezzo secondo, e poi via. */
-.lampo-esito {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  text-align: center;
-  border-radius: 18px;
-  padding: 24px 16px;
-  animation: comparsa 0.12s ease-out;
-}
-.lampo-esito--ok { background: var(--ok-chiaro); color: var(--ok); }
-.lampo-esito--errore { background: var(--errore-chiaro); color: var(--errore); }
-.lampo-esito__segno { font-size: 44px; font-weight: 800; line-height: 1; }
-.lampo-esito__titolo { font-size: clamp(28px, 9vw, 36px); font-weight: 800; letter-spacing: -0.02em; }
-.lampo-esito__dettaglio { font-size: 15px; color: var(--testo); }
-.lampo-esito__salta { font-size: 12px; color: var(--testo-fioco); margin-top: 10px; }
-@keyframes comparsa { from { transform: scale(0.96); opacity: 0; } to { transform: none; opacity: 1; } }
-
+/* Gli scarti nel riepilogo: dato in più in rosso, dato in meno in ambra. */
 .scarto-su { color: var(--errore); font-weight: 700; }
 .scarto-giu { color: var(--avviso); font-weight: 700; }
