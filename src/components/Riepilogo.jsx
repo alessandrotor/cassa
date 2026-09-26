@@ -1,13 +1,11 @@
-import { formatEuro } from '../utils/soldi.js';
+import { formatEuro, formatSecondi } from '../utils/soldi.js';
 import { PezziMostrati } from './Tagli.jsx';
 
 /** Riepilogo di fine sessione. Nel Turno diventa una chiusura di cassa vera. */
 export default function Riepilogo({ riepilogo, salitoDiLivello, onRigioca, onEsci }) {
   const { punteggio, streakMassima, clienti, corrette, tempi, chiusura, salvaMonete } = riepilogo;
   const precisione = clienti > 0 ? Math.round((corrette / clienti) * 100) : 0;
-  const tempoMedio = tempi.length > 0
-    ? Math.round(tempi.reduce((somma, t) => somma + t, 0) / tempi.length / 100) / 10
-    : null;
+  const tempoMedio = tempi.length > 0 ? tempi.reduce((somma, t) => somma + t, 0) / tempi.length : null;
 
   return (
     <div className="app">
@@ -40,7 +38,7 @@ export default function Riepilogo({ riepilogo, salitoDiLivello, onRigioca, onEsc
             <div className="metrica__etichetta">Serie migliore</div>
           </div>
           <div className="metrica">
-            <div className="metrica__valore cifra">{tempoMedio !== null ? `${tempoMedio}s` : '—'}</div>
+            <div className="metrica__valore cifra">{tempoMedio !== null ? formatSecondi(tempoMedio) : '—'}</div>
             <div className="metrica__etichetta">Tempo medio</div>
           </div>
         </div>

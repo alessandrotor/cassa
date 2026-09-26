@@ -6,7 +6,7 @@ import {
   restoOttimale, verificaComposizione, conteggioProgressivo,
   creaTabellaResti, leggiTabella, creaCalcolatoreResto,
 } from '../src/utils/resto.js';
-import { sommaPezzi, contaPezzi, formatEuro, parseEuro } from '../src/utils/soldi.js';
+import { sommaPezzi, contaPezzi, formatEuro, formatSecondi } from '../src/utils/soldi.js';
 
 /**
  * La DP pura, senza la scorciatoia del greedy: e' il riferimento contro cui si
@@ -22,13 +22,12 @@ function riferimentoDP(centMax, disponibilita = null) {
   return cent => leggiTabella(tabella, cent);
 }
 
-test('formatEuro e parseEuro fanno il giro completo senza perdere centesimi', () => {
-  for (const cent of [0, 1, 5, 99, 100, 760, 800, 1234, 5000]) {
-    assert.equal(parseEuro(formatEuro(cent)), cent, `giro fallito su ${cent}`);
-  }
+test('formatEuro e formatSecondi scrivono in italiano, con la virgola', () => {
   assert.equal(formatEuro(760), '7,60 €');
-  assert.equal(parseEuro('7,60'), 760);
-  assert.equal(parseEuro('non un numero'), null);
+  assert.equal(formatEuro(5), '0,05 €');
+  assert.equal(formatEuro(-1234), '-12,34 €');
+  assert.equal(formatSecondi(5430), '5,4 s');
+  assert.equal(formatSecondi(12000), '12,0 s');
 });
 
 test('senza vincoli la scorciatoia da la stessa risposta della DP, su ogni importo fino a 50 €', () => {

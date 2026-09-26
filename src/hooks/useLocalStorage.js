@@ -1,10 +1,14 @@
 import { useState, useCallback } from 'react';
 
-export default function useLocalStorage(key, initialValue) {
+/**
+ * @param {Function} [normalizza] ripulisce il valore letto: i salvataggi di
+ *   versioni vecchie possono non avere i campi aggiunti dopo.
+ */
+export default function useLocalStorage(key, initialValue, normalizza = v => v) {
   const [value, setValueState] = useState(() => {
     try {
       const item = localStorage.getItem(key);
-      return item ? JSON.parse(item) : initialValue;
+      return item ? normalizza(JSON.parse(item)) : initialValue;
     } catch {
       return initialValue;
     }

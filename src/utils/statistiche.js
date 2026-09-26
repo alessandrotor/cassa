@@ -33,7 +33,12 @@ export function statisticheVuote() {
     migliorPunteggio: 0,
     migliorStreak: 0,
     partiteGiocate: 0,
+    rapido: rapidoVuoto(),
   };
+}
+
+function rapidoVuoto() {
+  return { sessioni: 0, storico: [] };
 }
 
 function esercizioVuoto() {
@@ -46,9 +51,17 @@ function esercizioVuoto() {
  * altro stato.
  *
  * @param {Object} stats statistiche correnti
- * @param {{ esercizio: string, corretta: boolean, minima?: boolean, msImpiegati?: number, errore?: string|null }} esito
+ * `perLivello` è false fuori dall'Allenamento: il Turno mescola esercizi che il
+ * livello non ha ancora sbloccato, e farli contare vorrebbe dire salire di
+ * livello senza averlo mai giocato.
+ *
+ * @param {Object} stats statistiche correnti
+ * @param {{ esercizio: string, corretta: boolean, minima?: boolean, msImpiegati?: number,
+ *           errore?: string|null, perLivello?: boolean }} esito
  */
-export function registraEsito(stats, { esercizio, corretta, minima = false, msImpiegati = 0, errore = null }) {
+export function registraEsito(stats, {
+  esercizio, corretta, minima = false, msImpiegati = 0, errore = null, perLivello = true,
+}) {
   const base = stats ?? statisticheVuote();
   const precedente = base.perEsercizio?.[esercizio] ?? esercizioVuoto();
 
@@ -64,9 +77,11 @@ export function registraEsito(stats, { esercizio, corretta, minima = false, msIm
       : precedente.errori,
   };
 
+  const conEsercizio = { ...base, perEsercizio: { ...base.perEsercizio, [esercizio]: aggiornato } };
+  if (!perLivello) return conEsercizio;
+
   return {
-    ...base,
-    perEsercizio: { ...base.perEsercizio, [esercizio]: aggiornato },
+    ...conEsercizio,
     correttePerLivello: (base.correttePerLivello ?? 0) + (corretta ? 1 : 0),
     tentativiPerLivello: (base.tentativiPerLivello ?? 0) + 1,
     esitiPerLivello: [...(base.esitiPerLivello ?? []), corretta].slice(-FINESTRA_MASSIMA),
@@ -244,15 +259,68 @@ export function riassunto(stats) {
     });
 }
 
-/** Legge da localStorage tollerando dati vecchi o corrotti. */
-export function caricaStatistiche() {
-  try {
-    const grezzo = localStorage.getItem(CHIAVE_STATISTICHE);
-    if (!grezzo) return statisticheVuote();
-    const salvate = JSON.parse(grezzo);
-    if (salvate?.versione !== 2) return statisticheVuote();
-    return { ...statisticheVuote(), ...salvate, perEsercizio: { ...statisticheVuote().perEsercizio, ...salvate.perEsercizio } };
-  } catch {
-    return statisticheVuote();
-  }
+/** Quante sessioni rapide ricordare: abbastanza per vedere se si migliora. */
+const STORICO_RAPIDO = 30;
+
+/**
+ * Una sessione di Resto rapido finita. Si tiene il riassunto e non i singoli
+ * clienti: per vedere se si migliora bastano precisione, tempo e soldi sbagliati.
+ */
+export function registraSessioneRapida(stats, { ritmo, prezzi, riassunto, data = Date.now() }) {
+  const base = stats ?? statisticheVuote();
+  const rapido = base.rapido ?? rapidoVuoto();
+  const voce = {
+    data,
+    ritmo,
+    prezzi,
+    clienti: riassunto.clienti,
+    esatti: riassunto.esatti,
+    totaleInPiu: riassunto.totaleInPiu,
+    totaleInMeno: riassunto.totaleInMeno,
+    tempoMedio: riassunto.tempoMedio === null ? null : Math.round(riassunto.tempoMedio),
+  };
+  return {
+    ...base,
+    rapido: {
+      sessioni: rapido.sessioni + 1,
+      storico: [...rapido.storico, voce].slice(-STORICO_RAPIDO),
+    },
+  };
+}
+
+/**
+ * La sessione migliore per quel ritmo e quei prezzi: più risposte esatte in
+ * proporzione, e a parità chi ha sbagliato meno soldi.
+ */
+export function recordRapido(stats, ritmo, prezzi) {
+  const candidate = (stats?.rapido?.storico ?? [])
+    .filter(v => v.ritmo === ritmo && v.prezzi === prezzi && v.clienti > 0);
+  if (candidate.length === 0) return null;
+  return candidate.reduce((meglio, v) => {
+    const pv = v.esatti / v.clienti;
+    const pm = meglio.esatti / meglio.clienti;
+    if (pv !== pm) return pv > pm ? v : meglio;
+    const errV = v.totaleInPiu + v.totaleInMeno;
+    const errM = meglio.totaleInPiu + meglio.totaleInMeno;
+    return errV < errM ? v : meglio;
+  });
+}
+
+/**
+ * Tollera i salvataggi vecchi o corrotti: i campi aggiunti dopo (come lo
+ * storico del Resto rapido) prendono il valore iniziale invece di mancare.
+ */
+export function normalizzaStatistiche(salvate) {
+  const vuote = statisticheVuote();
+  if (!salvate || typeof salvate !== 'object' || salvate.versione !== 2) return vuote;
+  return {
+    ...vuote,
+    ...salvate,
+    perEsercizio: { ...vuote.perEsercizio, ...salvate.perEsercizio },
+    rapido: {
+      ...vuote.rapido,
+      ...salvate.rapido,
+      storico: Array.isArray(salvate.rapido?.storico) ? salvate.rapido.storico : [],
+    },
+  };
 }

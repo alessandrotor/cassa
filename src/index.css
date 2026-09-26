@@ -171,13 +171,13 @@ button {
   overflow: hidden;
   margin-top: 8px;
 }
+/* La durata arriva come variabile: cosi' la regola per chi riduce le
+   animazioni puo' ripristinarla intera, invece di azzerarla. */
 .timer__barra {
   height: 100%;
   width: 100%;
   background: var(--accento);
-  animation-name: scadenza;
-  animation-timing-function: linear;
-  animation-fill-mode: forwards;
+  animation: scadenza var(--durata, 30s) linear forwards;
 }
 @keyframes scadenza {
   from { width: 100%; background: var(--accento); }
@@ -297,40 +297,6 @@ button {
   border: 1px solid rgba(15, 23, 42, 0.18);
 }
 .gettone--moneta { border-radius: 50%; width: 44px; min-width: 44px; height: 44px; padding: 0; font-size: 12px; }
-
-/* ---- Tastierino ------------------------------------------------------- */
-.display {
-  background: var(--superficie);
-  border-radius: 12px;
-  box-shadow: var(--ombra);
-  padding: 10px 14px;
-  text-align: right;
-  font-size: clamp(30px, 10vw, 38px);
-  font-weight: 800;
-  min-height: 58px;
-}
-.display--segnaposto { color: var(--testo-fioco); font-weight: 600; }
-
-.tastierino {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-.tasto {
-  /* 52 px restano un bersaglio comodo per il pollice, ben sopra i 44 minimi. */
-  min-height: 52px;
-  border-radius: 12px;
-  background: var(--superficie);
-  box-shadow: var(--ombra);
-  font-size: 24px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.06s ease;
-}
-.tasto:active { transform: scale(0.95); background: var(--superficie-alt); }
-.tasto--utility { font-size: 18px; color: var(--testo-fioco); }
 
 /* ---- Feedback --------------------------------------------------------- */
 .feedback { border-radius: 14px; padding: 14px; }
@@ -466,6 +432,33 @@ button {
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
-  /* La barra del tempo non e' un vezzo: dice quanto manca, e va lasciata correre. */
-  .timer__barra { animation-name: scadenza !important; }
+  /* La barra del tempo non e' un vezzo: dice quanto manca, e va lasciata
+     correre. Va ridata intera: «animation: none» sopra azzera anche la durata,
+     e la barra si svuotava all'istante. */
+  .timer__barra { animation: scadenza var(--durata, 30s) linear forwards !important; }
 }
+
+/* ---- Resto rapido ----------------------------------------------------- */
+/* L'esito di un cliente: grande, leggibile in mezzo secondo, e poi via. */
+.lampo-esito {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  border-radius: 18px;
+  padding: 24px 16px;
+  animation: comparsa 0.12s ease-out;
+}
+.lampo-esito--ok { background: var(--ok-chiaro); color: var(--ok); }
+.lampo-esito--errore { background: var(--errore-chiaro); color: var(--errore); }
+.lampo-esito__segno { font-size: 44px; font-weight: 800; line-height: 1; }
+.lampo-esito__titolo { font-size: clamp(28px, 9vw, 36px); font-weight: 800; letter-spacing: -0.02em; }
+.lampo-esito__dettaglio { font-size: 15px; color: var(--testo); }
+.lampo-esito__salta { font-size: 12px; color: var(--testo-fioco); margin-top: 10px; }
+@keyframes comparsa { from { transform: scale(0.96); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.scarto-su { color: var(--errore); font-weight: 700; }
+.scarto-giu { color: var(--avviso); font-weight: 700; }

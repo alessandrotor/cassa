@@ -1,14 +1,42 @@
 import { useState } from 'react';
 
+import useLocalStorage from '../hooks/useLocalStorage.js';
 import { LIVELLI, LIVELLO_MASSIMO, ESERCIZI, DIFFICOLTA } from '../data/livelli.js';
 import { OBIETTIVI, OBIETTIVO_PREDEFINITO } from '../data/obiettivi.js';
 import { progressoLivello, regolaAvanzamento } from '../utils/statistiche.js';
 import { CLIENTI_PER_TURNO } from './Partita.jsx';
+import {
+  RITMI, RITMO_PREDEFINITO, PREZZI, PREZZI_PREDEFINITI, CLIENTI_PER_SESSIONE_RAPIDA,
+} from '../utils/lampo.js';
+
+/** Le scelte del menu restano fra un avvio e l'altro: chi si allena rifà la stessa cosa. */
+const CHIAVE_SCELTE = 'cassa:scelte:v1';
+const SCELTE_INIZIALI = {
+  modalita: 'allenamento',
+  obiettivo: OBIETTIVO_PREDEFINITO,
+  ritmo: RITMO_PREDEFINITO,
+  prezzi: PREZZI_PREDEFINITI,
+};
+
+/** Un salvataggio con valori che non esistono più torna ai predefiniti, voce per voce. */
+function scelteValide(salvate) {
+  const valide = { ...SCELTE_INIZIALI };
+  if (['allenamento', 'turno', 'rapido'].includes(salvate?.modalita)) valide.modalita = salvate.modalita;
+  if (OBIETTIVI[salvate?.obiettivo]) valide.obiettivo = salvate.obiettivo;
+  if (RITMI[salvate?.ritmo]) valide.ritmo = salvate.ritmo;
+  if (PREZZI[salvate?.prezzi]) valide.prezzi = salvate.prezzi;
+  return valide;
+}
 
 export default function Home({ statistiche, onAvvia, onStatistiche, onDifficolta }) {
-  const [modalita, setModalita] = useState('allenamento');
+  const [scelte, setScelte] = useLocalStorage(CHIAVE_SCELTE, SCELTE_INIZIALI, scelteValide);
+  const scegli = (chiave, valore) => setScelte(p => ({ ...p, [chiave]: valore }));
+  const { modalita, ritmo, prezzi } = scelte;
+  const obiettivoScelto = scelte.obiettivo;
+  const setModalita = valore => scegli('modalita', valore);
+  const setObiettivoScelto = valore => scegli('obiettivo', valore);
   const [eserciziScelti, setEserciziScelti] = useState([]);
-  const [obiettivoScelto, setObiettivoScelto] = useState(OBIETTIVO_PREDEFINITO);
+  const rapido = modalita === 'rapido';
 
   const livelloRaggiunto = statistiche?.livelloRaggiunto ?? 1;
   const [numeroLivello, setNumeroLivello] = useState(livelloRaggiunto);
@@ -59,8 +87,61 @@ export default function Home({ statistiche, onAvvia, onStatistiche, onDifficolta
           </span>
         </button>
 
-        {/* Non è una terza modalità: è come si giudica il resto, dentro il turno. */}
-        <div className="scheda">
+        <button
+          type="button"
+          className={`modalita ${rapido ? 'modalita--attiva' : ''}`}
+          onClick={() => setModalita('rapido')}
+        >
+          <span className="modalita__nome">Resto rapido</span>
+          <span className="modalita__desc">
+            {CLIENTI_PER_SESSIONE_RAPIDA} resti in pochi secondi l'uno. Puoi sbagliare: alla
+            fine vedi quanto hai dato in più e quanto in meno.
+          </span>
+        </button>
+
+        {rapido && (
+          <div className="scheda">
+            <p className="titolo-sezione">Ritmo</p>
+            <div className="chip-riga">
+              {Object.values(RITMI).map(voce => (
+                <button
+                  key={voce.chiave}
+                  type="button"
+                  className={`chip ${voce.chiave === ritmo ? 'chip--attivo' : ''}`}
+                  onClick={() => scegli('ritmo', voce.chiave)}
+                >
+                  {voce.nome}
+                </button>
+              ))}
+            </div>
+            <p className="nota" style={{ marginTop: 8 }}>
+              {RITMI[ritmo].descrizione} {String(RITMI[ritmo].base).replace('.', ',')} secondi
+              per cliente, più {String(RITMI[ritmo].perPezzo).replace('.', ',')} per ogni pezzo
+              da contare.
+            </p>
+
+            <p className="titolo-sezione" style={{ marginTop: 14 }}>Prezzi</p>
+            <div className="chip-riga">
+              {Object.values(PREZZI).map(voce => (
+                <button
+                  key={voce.chiave}
+                  type="button"
+                  className={`chip ${voce.chiave === prezzi ? 'chip--attivo' : ''}`}
+                  onClick={() => scegli('prezzi', voce.chiave)}
+                >
+                  {voce.nome}
+                </button>
+              ))}
+            </div>
+            <p className="nota" style={{ marginTop: 8 }}>
+              Conti come {PREZZI[prezzi].esempio}. Il totale di quello che rendi non è
+              scritto da nessuna parte: il conto lo fai tu.
+            </p>
+          </div>
+        )}
+
+        {/* Non è una modalità: è come si giudica il resto, nel turno e nell'allenamento. */}
+        {!rapido && <div className="scheda">
           <p className="titolo-sezione">Cosa vuol dire rendere bene</p>
           <div className="chip-riga">
             {Object.values(OBIETTIVI).map(voce => (
@@ -77,7 +158,7 @@ export default function Home({ statistiche, onAvvia, onStatistiche, onDifficolta
           <p className="nota" style={{ marginTop: 8 }}>
             {OBIETTIVI[obiettivoScelto].descrizione}
           </p>
-        </div>
+        </div>}
 
         {modalita === 'allenamento' && (
           <div className="scheda">
@@ -123,7 +204,7 @@ export default function Home({ statistiche, onAvvia, onStatistiche, onDifficolta
           </div>
         )}
 
-        <div className="scheda">
+        {!rapido && <div className="scheda">
           <p className="titolo-sezione">
             Esercizi {filtroValido.length === 0 && <span style={{ textTransform: 'none' }}>· tutti</span>}
           </p>
@@ -142,7 +223,7 @@ export default function Home({ statistiche, onAvvia, onStatistiche, onDifficolta
           <p className="nota" style={{ marginTop: 8 }}>
             Non scegliere niente li mescola tutti. Sceglierne uno lo allena da solo.
           </p>
-        </div>
+        </div>}
 
         <button type="button" className="pulsante pulsante--fantasma" onClick={onStatistiche}>
           Come sto andando
@@ -162,9 +243,11 @@ export default function Home({ statistiche, onAvvia, onStatistiche, onDifficolta
             numeroLivello,
             obiettivo: obiettivoScelto,
             eserciziScelti: filtroValido.length > 0 ? filtroValido : null,
+            ritmo,
+            prezzi,
           })}
         >
-          {modalita === 'turno' ? 'Apri la cassa' : 'Comincia'}
+          {modalita === 'turno' ? 'Apri la cassa' : (rapido ? 'Via' : 'Comincia')}
         </button>
       </div>
     </div>

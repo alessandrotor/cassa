@@ -16,13 +16,16 @@ una licenza open source, quindi non è consentito riusarlo o ridistribuirlo.
 
 ## Come si gioca
 
-Due modalità:
+Tre modalità:
 
 - **Allenamento** — sette livelli che introducono una difficoltà alla volta, con
   timer, punteggio e serie. Si può allenare un singolo esercizio alla volta.
 - **Turno di cassa** — quindici clienti di fila con un fondo cassa vero. I tagli
   finiscono davvero, e alla fine la cassa deve quadrare: la differenza è l'errore
   che hai accumulato rendendo male.
+- **Resto rapido** — venti resti di fila con pochi secondi a testa. L'errore è
+  permesso: allo scadere del tempo si consegna quello che hai in mano, e alla
+  fine vedi quanto hai dato **in più** e quanto **in meno**.
 
 Non si digita mai una cifra: si risponde **prendendo i soldi dal cassetto**,
 perché in cassa il gesto è quello, e le dita vanno allenate insieme alla testa.
@@ -49,6 +52,28 @@ contare, meno errori, e le monetine restano in cassa per chi viene dopo.
 Quando sbagli il gioco non dice solo «no»: mostra il resto giusto, con quali pezzi
 darlo, e come contarlo al cliente col conteggio progressivo — quello che si insegna
 davvero dietro il banco: `12,40 € → 12,50 → 13,00 → 15,00 → 20,00`.
+
+## Resto rapido
+
+È un esercizio di conto sotto pressione, non un esame del gesto: nessuno ferma
+il round per spiegare. Dopo ogni cliente compare per un attimo l'esito
+(«✓ Giusto» oppure «0,50 € in meno»), poi arriva subito il cliente dopo.
+
+Il tempo per cliente è un tempo fisso per il conto più un attimo per ogni pezzo
+da contare, perché un resto da 7,90 € (cinque pezzi) non può avere lo stesso
+tempo di uno da 5,00 € (uno):
+
+| Ritmo | Tempo fisso | Per pezzo |
+|---|---|---|
+| Calmo | 5 s | 0,8 s |
+| Svelto | 3,5 s | 0,6 s |
+| Lampo | 2,5 s | 0,45 s |
+
+Qui il totale di quello che stai rendendo non è scritto da nessuna parte, e non
+ci sono i pulsanti «ha pagato giusto» e «non basta»: i soldi bastano sempre, e il
+conto lo fai tu. A fine sessione i due totali restano separati — 2 € in più a un
+cliente e 2 € in meno a un altro fanno zero sul saldo, ma sono due errori — con
+l'elenco dei resti sbagliati e il record per ritmo e prezzi.
 
 ## Cosa vuol dire rendere bene
 
@@ -132,6 +157,7 @@ src/
   utils/cassetto.js    scorte, prelievi e chiusura di cassa
   utils/generatore.js  costruisce le transazioni giocabili
   utils/valutazione.js giudica la risposta: è qui che si decide cosa il gioco insegna
+  utils/lampo.js       tempi, esiti e riassunto del Resto rapido
   components/          le schermate
 ```
 

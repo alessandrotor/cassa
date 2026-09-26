@@ -1,5 +1,7 @@
-import { riassunto } from '../utils/statistiche.js';
+import { riassunto, recordRapido } from '../utils/statistiche.js';
 import { LIVELLI, LIVELLO_MASSIMO } from '../data/livelli.js';
+import { RITMI, PREZZI } from '../utils/lampo.js';
+import { formatEuro, formatSecondi } from '../utils/soldi.js';
 
 export default function Statistiche({ statistiche, onAzzera, onEsci }) {
   const righe = riassunto(statistiche);
@@ -48,7 +50,7 @@ export default function Statistiche({ statistiche, onAzzera, onEsci }) {
                 <div className="riga-stat__nome">{riga.nome}</div>
                 <div className="riga-stat__dettaglio">
                   {riga.corrette}/{riga.tentativi} giuste
-                  {riga.tempoMediano !== null && ` · ${(riga.tempoMediano / 1000).toFixed(1)}s`}
+                  {riga.tempoMediano !== null && ` · ${formatSecondi(riga.tempoMediano)}`}
                   {riga.erroreRicorrente && ` · di solito: ${riga.erroreRicorrente.etichetta.toLowerCase()}`}
                 </div>
                 <div className="barra-precisione">
@@ -71,6 +73,8 @@ export default function Statistiche({ statistiche, onAzzera, onEsci }) {
             solo quello.
           </p>
         )}
+
+        <StatisticheRapide statistiche={statistiche} />
       </main>
 
       <div className="azioni">
@@ -82,5 +86,63 @@ export default function Statistiche({ statistiche, onAzzera, onEsci }) {
         </button>
       </div>
     </div>
+  );
+}
+
+/** Quante sessioni recenti mostrare: il resto dello storico serve ai record. */
+const SESSIONI_MOSTRATE = 5;
+
+/**
+ * Il Resto rapido non passa dai livelli: si migliora se sale la precisione a
+ * parità di ritmo, e se scendono i soldi sbagliati. Per questo il record è per
+ * ritmo e prezzi, e le sessioni recenti mostrano i due totali separati.
+ */
+function StatisticheRapide({ statistiche }) {
+  const storico = statistiche.rapido?.storico ?? [];
+  if (storico.length === 0) return null;
+
+  const record = Object.keys(RITMI).flatMap(ritmo => Object.keys(PREZZI).map(prezzi => ({
+    ritmo, prezzi, voce: recordRapido(statistiche, ritmo, prezzi),
+  }))).filter(r => r.voce);
+  const recenti = storico.slice(-SESSIONI_MOSTRATE).reverse();
+
+  return (
+    <>
+      <div className="scheda">
+        <p className="titolo-sezione">Resto rapido · record</p>
+        {record.map(({ ritmo, prezzi, voce }) => (
+          <div key={`${ritmo}-${prezzi}`} className="riga-stat">
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="riga-stat__nome">{RITMI[ritmo].nome} · {PREZZI[prezzi].nome.toLowerCase()}</div>
+              <div className="riga-stat__dettaglio">
+                {voce.tempoMedio !== null && `${formatSecondi(voce.tempoMedio)} a cliente · `}
+                {formatEuro(voce.totaleInPiu)} in più, {formatEuro(voce.totaleInMeno)} in meno
+              </div>
+            </div>
+            <div className="riga-stat__numero cifra">{voce.esatti}/{voce.clienti}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="scheda">
+        <p className="titolo-sezione">Resto rapido · ultime sessioni</p>
+        {recenti.map(voce => (
+          <div key={voce.data} className="riga-stat">
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="riga-stat__nome">
+                {new Date(voce.data).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}
+                {' · '}{RITMI[voce.ritmo]?.nome ?? voce.ritmo}
+              </div>
+              <div className="riga-stat__dettaglio">
+                <span className={voce.totaleInPiu > 0 ? 'scarto-su' : ''}>+{formatEuro(voce.totaleInPiu)}</span>
+                {' · '}
+                <span className={voce.totaleInMeno > 0 ? 'scarto-giu' : ''}>−{formatEuro(voce.totaleInMeno)}</span>
+              </div>
+            </div>
+            <div className="riga-stat__numero cifra">{voce.esatti}/{voce.clienti}</div>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }

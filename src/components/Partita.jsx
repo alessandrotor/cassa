@@ -5,7 +5,9 @@ import { livello as livelloDi, livelloLibero, ESERCIZI } from '../data/livelli.j
 import { creaRng, generaTransazione } from '../utils/generatore.js';
 import { valutaRisposta } from '../utils/valutazione.js';
 import { calcolaPunti } from '../utils/punteggio.js';
-import { creaCassetto, registraTransazione, totaleCassetto, tagliEsauriti, chiusuraCassa } from '../utils/cassetto.js';
+import {
+  creaCassetto, registraTransazione, deposita, totaleCassetto, tagliEsauriti, chiusuraCassa,
+} from '../utils/cassetto.js';
 import { contaMonete } from '../utils/soldi.js';
 import { obiettivo as obiettivoDi } from '../data/obiettivi.js';
 import { etichettaTaglio } from '../data/valuta.js';
@@ -49,8 +51,12 @@ export default function Partita({ modalita, numeroLivello, eserciziScelti, obiet
   const [tempi, setTempi] = useState([]);
 
   const inizioRound = useRef(performance.now());
+  // Il round si chiude una volta sola. Lo stato non basta a garantirlo: un
+  // doppio tocco su Conferma, o il tocco che arriva insieme allo scadere del
+  // tempo, cade prima che React abbia ridisegnato, e contava il round due volte.
+  const roundChiuso = useRef(false);
   // Il timer legge la risposta da un ref: se dipendesse dallo stato, ogni tocco
-  // sul tastierino farebbe ripartire il conto alla rovescia.
+  // sul cassetto farebbe ripartire il conto alla rovescia.
   const rispostaRef = useRef(risposta);
   rispostaRef.current = risposta;
 
@@ -60,7 +66,8 @@ export default function Partita({ modalita, numeroLivello, eserciziScelti, obiet
 
   /* ---- Il round si chiude qui: è l'unico punto che assegna punti e statistiche. */
   const concludi = useCallback((rispostaFinale, tempoScaduto = false) => {
-    if (inFeedback) return;
+    if (inFeedback || roundChiuso.current) return;
+    roundChiuso.current = true;
     const msImpiegati = performance.now() - inizioRound.current;
 
     const valutato = tempoScaduto
@@ -96,15 +103,17 @@ export default function Partita({ modalita, numeroLivello, eserciziScelti, obiet
       minima: valutato.minima,
       msImpiegati,
       errore: valutato.errore,
+      perLivello: !turno,
     });
 
     // Nel Turno il cassetto cambia davvero, con i pezzi che il giocatore ha
     // scelto: se ha reso male, a fine giornata la cassa non quadra. È il punto
-    // di tutta la modalità.
-    if (turno && transazione.bastano) {
+    // di tutta la modalità. Vale anche quando i soldi non bastavano e non te
+    // ne sei accorto: il cliente se ne va avendo pagato meno, e si vede.
+    if (turno && !valutato.annullata) {
+      const incassati = valutato.pezziIncassati ?? transazione.pezziPorti;
       const resi = valutato.pezziResi ?? transazione.composizioneResto;
-      const dopo = registraTransazione(cassetto, transazione.pezziPorti, resi);
-      if (dopo) setCassetto(dopo);
+      setCassetto(registraTransazione(cassetto, incassati, resi) ?? deposita(cassetto, incassati));
       setIncassoAtteso(i => i + transazione.conto);
     }
 
@@ -148,11 +157,30 @@ export default function Partita({ modalita, numeroLivello, eserciziScelti, obiet
     setPremio({ punti: 0, dettaglio: [] });
     setIndice(i => i + 1);
     inizioRound.current = performance.now();
+    roundChiuso.current = false;
   };
 
   const chiudiAllenamento = () => {
     onFine({ modalita, punteggio, streakMassima, clienti: indice, corrette, tempi, chiusura: null });
   };
+
+  const pronta = rispostaPronta(transazione.tipoEsercizio, risposta);
+
+  // Da tastiera: Invio conferma, e sul feedback passa al cliente dopo.
+  const invio = useRef(null);
+  invio.current = () => {
+    if (inFeedback) prossimoCliente();
+    else if (pronta) concludi(risposta);
+  };
+  useEffect(() => {
+    const suTasto = evento => {
+      if (evento.key !== 'Enter' || evento.repeat) return;
+      evento.preventDefault();
+      invio.current();
+    };
+    window.addEventListener('keydown', suTasto);
+    return () => window.removeEventListener('keydown', suTasto);
+  }, []);
 
   const esauriti = turno ? tagliEsauriti(cassetto).map(v => ({ valore: v, etichetta: etichettaTaglio(v) })) : [];
 
@@ -212,7 +240,7 @@ export default function Partita({ modalita, numeroLivello, eserciziScelti, obiet
           <button
             type="button"
             className="pulsante pulsante--principale"
-            disabled={!rispostaPronta(transazione.tipoEsercizio, risposta)}
+            disabled={!pronta}
             onClick={() => concludi(risposta)}
           >
             Conferma

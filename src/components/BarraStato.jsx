@@ -9,6 +9,7 @@ export default function BarraStato({
   titolo,
   sottotitolo,
   punteggio,
+  etichettaPunteggio = 'Punti',
   streak,
   progresso,
   secondiTimer = 0,
@@ -35,7 +36,7 @@ export default function BarraStato({
         )}
 
         <div className="barra__voce" style={{ alignItems: 'flex-end' }}>
-          <span className="barra__etichetta">Punti</span>
+          <span className="barra__etichetta">{etichettaPunteggio}</span>
           <span className="barra__valore cifra">{punteggio}</span>
         </div>
 
@@ -54,7 +55,7 @@ export default function BarraStato({
           <div
             key={chiaveRound}
             className="timer__barra"
-            style={{ animationDuration: `${secondiTimer}s` }}
+            style={{ '--durata': `${secondiTimer}s` }}
           />
         </div>
       )}

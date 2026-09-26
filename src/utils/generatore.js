@@ -200,7 +200,10 @@ function provaTransazione(tipo, livello, cassetto, rng, obiettivo) {
   const conto = generaConto(livello, rng);
   const portafoglio = generaPortafoglio(conto, rng);
 
-  if (tipo === 'conta') return provaConta(conto, portafoglio, cassetto, rng, obiettivo);
+  if (tipo === 'conta') {
+    const puoNonBastare = livello.pagamentiInsufficienti !== false;
+    return provaConta(conto, portafoglio, cassetto, rng, obiettivo, puoNonBastare);
+  }
 
   const banconota = banconotaPerPagare(conto, portafoglio, rng);
   if (!banconota) return null;
@@ -279,8 +282,8 @@ function provaChiediSpiccioli(conto, portafoglio, banconota, cassetto, rng, obie
 }
 
 /** Il mucchio di contanti posato sul bancone: a volte non copre nemmeno il conto. */
-function provaConta(conto, portafoglio, cassetto, rng, obiettivo) {
-  const insufficiente = rng() < 0.2;
+function provaConta(conto, portafoglio, cassetto, rng, obiettivo, puoNonBastare = true) {
+  const insufficiente = puoNonBastare && rng() < 0.2;
   let pezziPorti;
 
   if (insufficiente) {

@@ -1,6 +1,6 @@
-import { formatEuro, descriviPezzi, sommaPezzi, contaPezzi, contaMonete } from './soldi.js';
+import { formatEuro, descriviPezzi, sommaPezzi, contaPezzi, contaMonete, unisciPezzi } from './soldi.js';
 import { verificaComposizione, restoOttimale } from './resto.js';
-import { valutaRichiesta } from './spiccioli.js';
+import { valutaRichiesta, clientePuoDare } from './spiccioli.js';
 import { obiettivo as obiettivoDi } from '../data/obiettivi.js';
 
 /**
@@ -14,7 +14,14 @@ import { obiettivo as obiettivoDi } from '../data/obiettivi.js';
  * @param {{ obiettivo?: string }} opzioni quale idea di "resto ben reso" applicare
  * @returns {{ corretta: boolean, errore: string|null, titolo: string,
  *             messaggio: string, mostraResto: boolean, minima: boolean,
- *             composizioneDaMostrare: Object|null, pezziResi: Object|null }}
+ *             composizioneDaMostrare: Object|null, pezziResi: Object|null,
+ *             pezziIncassati: Object|null, annullata: boolean }}
+ *
+ * Gli ultimi tre dicono cosa succede davvero al cassetto nel Turno:
+ * `pezziResi` è quello che esce, `pezziIncassati` quello che entra (null = i
+ * contanti posati dal cliente), `annullata` vuol dire che la vendita non si è
+ * chiusa. Vanno detti per ogni risposta: se il Turno li indovinasse, un resto
+ * dato male verrebbe corretto in silenzio e la cassa quadrerebbe lo stesso.
  */
 export function valutaRisposta(transazione, risposta, cassetto = null, opzioni = {}) {
   return transazione.tipoEsercizio === 'chiedi-spiccioli'
@@ -43,12 +50,14 @@ function valutaResto(transazione, risposta, cassetto, opzioni = {}) {
             ? `Ti ha dato ${formatEuro(transazione.ricevuto)}, esattamente il conto: bastavano.`
             : `Ti ha dato ${formatEuro(transazione.ricevuto)} per un conto di ${formatEuro(transazione.conto)}: il resto era ${formatEuro(transazione.resto)}.`,
           mostraResto: transazione.resto > 0,
+          annullata: true,
         })
       : esito({
           corretta: true,
           titolo: 'Giusto, non basta',
           messaggio: `Ti ha dato ${formatEuro(transazione.ricevuto)}: mancano ${formatEuro(transazione.mancano)}, vanno chiesti al cliente.`,
           mostraResto: false,
+          annullata: true,
         });
   }
 
@@ -60,6 +69,7 @@ function valutaResto(transazione, risposta, cassetto, opzioni = {}) {
         titolo: 'Non ha pagato giusto',
         messaggio: `Ti ha dato ${formatEuro(transazione.ricevuto)} per un conto di ${formatEuro(transazione.conto)}: mancano ${formatEuro(transazione.mancano)}.`,
         mostraResto: false,
+        pezziResi: {},
       });
     }
     return transazione.resto === 0
@@ -68,12 +78,14 @@ function valutaResto(transazione, risposta, cassetto, opzioni = {}) {
           titolo: 'Pagamento esatto',
           messaggio: `${formatEuro(transazione.ricevuto)} tondi: non c'è niente da rendere.`,
           mostraResto: false,
+          pezziResi: {},
         })
       : esito({
           corretta: false,
           errore: 'cifra-sbagliata',
           titolo: "Un resto c'era",
           messaggio: `Ti ha dato ${formatEuro(transazione.ricevuto)} per ${formatEuro(transazione.conto)}: dovevi rendere ${formatEuro(transazione.resto)}.`,
+          pezziResi: {},
         });
   }
 
@@ -186,7 +198,9 @@ function valutaSpiccioli(transazione, risposta, cassetto, opzioni = {}) {
 
   const corretta = giudizio.verdetto === 'ottima' || giudizio.verdetto === 'giusto-non-chiedere';
   const parziale = giudizio.verdetto === 'buona';
-  const ricevutoFinale = transazione.ricevuto + sommaPezzi(chiesti);
+  // Si incassa quello che si è chiesto solo se il cliente ce l'ha davvero.
+  const incassabili = clientePuoDare(chiesti, transazione.portafoglioCliente) ? chiesti : {};
+  const ricevutoFinale = transazione.ricevuto + sommaPezzi(incassabili);
   const composizione = restoOttimale(ricevutoFinale - transazione.conto, cassetto);
 
   const titoli = {
@@ -211,6 +225,13 @@ function valutaSpiccioli(transazione, risposta, cassetto, opzioni = {}) {
     // suo gesto che deve vedere finito, non quello del manuale.
     composizioneDaMostrare: composizione.possibile ? composizione.pezzi : transazione.composizioneResto,
     ricevutoEffettivo: composizione.possibile ? ricevutoFinale : transazione.ricevuto,
+    // Nel Turno le monete chieste entrano davvero nel cassetto, ed è il resto
+    // che ne deriva a uscire: senza questo, chiedere spiccioli per salvare le
+    // monete non lascerebbe nessuna traccia nella chiusura di cassa.
+    pezziIncassati: composizione.possibile
+      ? unisciPezzi(transazione.pezziPorti, incassabili)
+      : transazione.pezziPorti,
+    pezziResi: composizione.possibile ? composizione.pezzi : transazione.composizioneResto,
   });
 }
 
@@ -225,10 +246,13 @@ function esito({
   etichettaBonus = 'Meno pezzi possibile',
   composizioneDaMostrare = null,
   pezziResi = null,
+  pezziIncassati = null,
+  annullata = false,
   ricevutoEffettivo = null,
 }) {
   return {
     corretta, parziale, errore, titolo, messaggio, mostraResto,
     minima, etichettaBonus, composizioneDaMostrare, pezziResi, ricevutoEffettivo,
+    pezziIncassati, annullata,
   };
 }

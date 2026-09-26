@@ -5,8 +5,8 @@ import { frasePerChiedere } from '../utils/spiccioli.js';
 import Scontrino from './Scontrino.jsx';
 import CassettoTagli, { Vassoio, PezziMostrati } from './Tagli.jsx';
 
-export default function Esercizio({ transazione, risposta, onRisposta, cassetto }) {
-  const comuni = { transazione, risposta, onRisposta, cassetto };
+export default function Esercizio({ transazione, risposta, onRisposta, cassetto, rapido = false }) {
+  const comuni = { transazione, risposta, onRisposta, cassetto, rapido };
   if (transazione.tipoEsercizio === 'chiedi-spiccioli') return <ChiediSpiccioli {...comuni} />;
   return <DaiIlResto {...comuni} />;
 }
@@ -16,8 +16,12 @@ export default function Esercizio({ transazione, risposta, onRisposta, cassetto 
  * L'unico gesto del gioco: prendere dal cassetto i pezzi giusti. Vale per il
  * pagamento con una banconota, per il mucchio da contare e per gli spiccioli
  * aggiunti dal cliente — cambia solo quanto lavoro tocca alla testa prima.
+ *
+ * Nel Resto rapido spariscono il totale reso e le due dichiarazioni: il conto
+ * lo fai tu, come al banco dove nessuno ti somma quello che hai in mano, e non
+ * rendere niente vuol dire semplicemente consegnare il vassoio vuoto.
  */
-function DaiIlResto({ transazione, risposta, onRisposta, cassetto }) {
+function DaiIlResto({ transazione, risposta, onRisposta, cassetto, rapido }) {
   const presi = risposta.pezzi ?? {};
   const totale = sommaPezzi(presi);
   const scarsi = cassetto ? tagliInEsaurimento(cassetto) : [];
@@ -57,15 +61,17 @@ function DaiIlResto({ transazione, risposta, onRisposta, cassetto }) {
       <div className="scheda">
         <p className="titolo-sezione">Quello che rendi</p>
         <Vassoio pezzi={presi} onTogli={rimetti} vuotoTesto="Tocca i tagli qui sotto" />
-        <div className="vassoio__totale">
-          <span>Totale reso</span>
-          <strong className="cifra">{formatEuro(totale)}</strong>
-        </div>
+        {!rapido && (
+          <div className="vassoio__totale">
+            <span>Totale reso</span>
+            <strong className="cifra">{formatEuro(totale)}</strong>
+          </div>
+        )}
       </div>
 
       {/* Le due volte in cui non si rende niente. Il pagamento esatto capita
           spesso, e senza un pulsante suo non ci sarebbe modo di rispondere. */}
-      <div className="chip-riga" style={{ justifyContent: 'center' }}>
+      {!rapido && <div className="chip-riga" style={{ justifyContent: 'center' }}>
         <button
           type="button"
           className={`chip ${risposta.dichiarazione === 'senza-resto' ? 'chip--attivo' : ''}`}
@@ -80,7 +86,7 @@ function DaiIlResto({ transazione, risposta, onRisposta, cassetto }) {
         >
           Non basta
         </button>
-      </div>
+      </div>}
 
       <p className="titolo-sezione">Cassetto</p>
       <CassettoTagli presi={presi} cassetto={cassetto} scarsi={scarsi} onTocca={prendi} />

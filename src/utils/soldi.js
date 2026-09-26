@@ -10,14 +10,9 @@ export function formatEuro(cent, { simbolo = true } = {}) {
   return simbolo ? `${corpo} €` : corpo;
 }
 
-/** "7,60" | "7.6" | "760" (se giaCentesimi) -> centesimi interi, oppure null se non interpretabile. */
-export function parseEuro(testo) {
-  if (typeof testo === 'number') return Math.round(testo * 100);
-  const pulito = String(testo).trim().replace(/[€\s]/g, '').replace(',', '.');
-  if (pulito === '' || !/^-?\d*\.?\d*$/.test(pulito)) return null;
-  const numero = Number(pulito);
-  if (!Number.isFinite(numero)) return null;
-  return Math.round(numero * 100);
+/** 5430 ms -> "5,4 s": i secondi con la virgola, come si scrivono in italiano. */
+export function formatSecondi(ms) {
+  return `${(ms / 1000).toFixed(1).replace('.', ',')} s`;
 }
 
 /** Mappa { valoreTaglio: quantita } -> totale in centesimi. */
